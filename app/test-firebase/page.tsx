@@ -33,6 +33,12 @@ export default function TestFirebasePage() {
       }
 
       // Tentar listar coleções (teste de leitura)
+      if (!db) {
+        setStatus('error')
+        setMessage('Firebase não inicializado. Verifique as variáveis de ambiente.')
+        return
+      }
+      
       const testCollection = collection(db, 'test')
       const snapshot = await getDocs(testCollection)
       
@@ -60,6 +66,12 @@ export default function TestFirebasePage() {
       setTestWrite('testing')
       
       // Tentar escrever um documento de teste
+      if (!db) {
+        setStatus('error')
+        setMessage('Firebase não inicializado. Verifique as variáveis de ambiente.')
+        return
+      }
+      
       const testCollection = collection(db, 'test')
       await addDoc(testCollection, {
         message: 'Teste de escrita do Firebase',

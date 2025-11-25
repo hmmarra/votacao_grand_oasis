@@ -14,6 +14,12 @@ export default function InitAdminPage() {
       setMessage('Verificando se o usuário mestre já existe...')
 
       // Verificar se já existe
+      if (!db) {
+        setError('Firebase não inicializado. Verifique as variáveis de ambiente.')
+        setLoading(false)
+        return
+      }
+      
       const administradoresRef = collection(db, 'administradores')
       const q = query(administradoresRef, where('email', '==', 'admin@admin.com'))
       const snapshot = await getDocs(q)
