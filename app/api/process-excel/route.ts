@@ -54,6 +54,10 @@ export async function POST(request: NextRequest) {
     let updated = 0
     const errors: string[] = []
 
+    if (!db) {
+      return NextResponse.json({ error: 'Firebase não inicializado' }, { status: 500 })
+    }
+    
     const administradoresRef = collection(db, 'administradores')
     const uploadDate = serverTimestamp()
 
