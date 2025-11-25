@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Formulário de Votação de Síndico</title>
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script>window.jQuery || document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"><\/script>');</script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>if (!window.tailwind) { document.write('<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css">'); }</script>
+</head>
+<body>
+  <div class="min-h-screen bg-gray-50 py-6 sm:py-10 px-3 sm:px-4 text-sm sm:text-base">
+    <div class="max-w-2xl mx-auto">
+      <div class="flex flex-col sm:flex-row items-start sm:items-center gap-3 mb-4 sm:mb-6">
+        <div class="p-2 rounded-xl bg-indigo-100 text-indigo-700">
+          <!-- Heroicon: Shield Check -->
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" d="M2.25 12c0-2.248 0-4.122.116-5.527.119-1.44.36-2.527 1.035-3.388.676-.86 1.63-1.354 3.098-1.79C7.98.854 9.81.56 12 .56c2.19 0 4.019.294 5.501.736 1.469.436 2.422.93 3.098 1.79.676.861.916 1.948 1.035 3.388.116 1.405.116 3.279.116 5.527 0 2.248 0 4.123-.116 5.528-.119 1.44-.36 2.527-1.035 3.387-.676.862-1.63 1.356-3.098 1.792-1.482.441-3.311.735-5.501.735-2.19 0-4.02-.294-5.501-.735-1.469-.436-2.422-.93-3.098-1.792-.676-.86-.916-1.947-1.035-3.387C2.25 16.123 2.25 14.248 2.25 12Zm12.53-2.03a.75.75 0 0 0-1.06-1.06L11 11.62l-.72-.72a.75.75 0 1 0-1.06 1.06l1.25 1.25a.75.75 0 0 0 1.06 0l3.25-3.25Z" clip-rule="evenodd"/></svg>
+        </div>
+        <div>
+          <h1 class="text-2xl font-semibold text-gray-800 leading-snug">Formulário de Votação de Síndico</h1>
+          <p class="text-sm text-gray-500">Digite seu CPF, busque seus dados e registre seu voto.</p>
+        </div>
+      </div>
+
+      <div id="formMessage" class="mb-4 sm:mb-6 rounded-2xl border border-indigo-100 bg-indigo-50 p-4 text-indigo-900">
+        <div class="text-sm font-medium">Criado por: <span class="font-semibold">Grand Oasis Poá</span></div>
+        <div id="pautaDescription" class="mt-2 text-sm leading-relaxed">
+          <p class="text-gray-500 italic">Carregando informações da pauta...</p>
+        </div>
+        <div id="defaultMessage" class="mt-2 text-sm leading-relaxed">
+          <p>
+            Este formulário foi elaborado exclusivamente para a votação a ser realizada na <strong>Assembleia Geral</strong> conforme edital de convocação oficial. Sua validade restringe-se ao dia e horário da referida assembleia, conforme registrados em ata.
+          </p>
+          <p class="mt-2 text-xs text-indigo-800">
+            Votos emitidos fora do horário estipulado para a assembleia ou em desacordo com as normas estabelecidas não serão considerados válidos.
+          </p>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-2xl shadow p-4 sm:p-6">
+        <form id="votingForm" autocomplete="off">
+          <input type="hidden" id="sindico" name="sindico" style="display:none;">
+
+          <div class="mb-4">
+            <label for="cpf" class="block text-sm font-medium text-gray-700 mb-1">CPF</label>
+            <div class="flex flex-col sm:flex-row gap-2">
+              <input type="text" id="cpf" name="cpf" class="w-full sm:flex-1 rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 h-12 text-base" placeholder="Digite seu CPF" required>
+              <button type="button" id="btnBuscar" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 text-white px-5 py-3 hover:bg-indigo-700 text-base h-12">
+                <!-- Heroicon: Magnifying Glass -->
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" d="M10.5 3.75a6.75 6.75 0 1 0 4.19 12.01l3.775 3.775a.75.75 0 1 0 1.06-1.06l-3.775-3.776A6.75 6.75 0 0 0 10.5 3.75Zm-5.25 6.75a5.25 5.25 0 1 1 10.5 0 5.25 5.25 0 0 1-10.5 0Z" clip-rule="evenodd"/></svg>
+                Buscar
+              </button>
+            </div>
+            <p class="text-xs text-gray-500 mt-1">Dica: após digitar, clique em Buscar para carregar seus dados.</p>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-4">
+            <div>
+              <label for="nome" class="block text-sm font-medium text-gray-700 mb-1">Nome</label>
+              <input type="text" id="nome" name="nome" class="w-full rounded-lg border-gray-300 bg-gray-100 h-12 text-base" readonly>
+            </div>
+            <div>
+              <label for="apartamento" class="block text-sm font-medium text-gray-700 mb-1">Apartamento</label>
+              <input type="text" id="apartamento" name="apartamento" class="w-full rounded-lg border-gray-300 bg-gray-100 h-12 text-base" readonly>
+            </div>
+            <div>
+              <label for="torre" class="block text-sm font-medium text-gray-700 mb-1">Torre</label>
+              <input type="text" id="torre" name="torre" class="w-full rounded-lg border-gray-300 bg-gray-100 h-12 text-base" readonly>
+            </div>
+          </div>
+
+          <div class="mb-6">
+            <p class="block text-sm font-medium text-gray-700 mb-3">Escolha sua opção</p>
+            <div id="candidatesContainer" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+              <div class="text-gray-500 text-center">Carregando opções...</div>
+            </div>
+          </div>
+
+          <!-- Placar em Tempo Real -->
+          <div id="placarSection" class="mb-6 hidden">
+            <div class="flex items-center justify-between mb-3">
+              <p class="block text-sm font-medium text-gray-700">Placar em Tempo Real</p>
+              <button type="button" id="btnAtualizarPlacar" class="text-sm text-indigo-600 hover:text-indigo-700 inline-flex items-center gap-1">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                  <path fill-rule="evenodd" d="M4.755 10.059a6.5 6.5 0 1 1 8.489-8.489 5.25 5.25 0 0 0-1.239 3.659 5.25 5.25 0 0 1-1.24 3.66 6.5 6.5 0 0 1-5.51-3.83ZM12.75 2.5a.75.75 0 0 0-.75.75v4.5a.75.75 0 0 0 1.5 0V4.81l2.22 2.22a.75.75 0 1 0 1.06-1.06l-3.5-3.5a.75.75 0 0 0-1.06 0L11.47 5.97a.75.75 0 0 0 1.28-.53V3.25a.75.75 0 0 0-.75-.75Z" clip-rule="evenodd"/>
+                </svg>
+                Atualizar
+              </button>
+            </div>
+            <div id="placarContainer" class="bg-gray-50 rounded-xl p-4">
+              <div class="text-gray-500 text-center">Carregando placar...</div>
+            </div>
+            <p id="placarTotal" class="mt-3 text-sm text-gray-600 text-center"></p>
+          </div>
+
+          <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+            <button type="button" id="btnVoltarPautas" class="w-full sm:w-auto inline-flex items-center gap-2 rounded-lg bg-gray-600 text-white px-5 py-3 hover:bg-gray-700 text-base h-12">
+              <!-- Heroicon: Arrow Left -->
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" d="M19.5 12a.75.75 0 0 1-.75.75H7.31l3.22 3.22a.75.75 0 1 1-1.06 1.06l-4.5-4.5a.75.75 0 0 1 0-1.06l4.5-4.5a.75.75 0 1 1 1.06 1.06l-3.22 3.22h11.44c.414 0 .75.336.75.75Z" clip-rule="evenodd"/></svg>
+              Voltar para Pautas
+            </button>
+            <button type="button" id="btnTogglePlacar" class="w-full sm:w-auto inline-flex items-center gap-2 rounded-lg bg-sky-600 text-white px-5 py-3 hover:bg-sky-700 text-base h-12">
+              <!-- Heroicon: Chart Bar -->
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor"><path d="M3.75 3a.75.75 0 0 1 .75.75v15a.75.75 0 1 1-1.5 0v-15A.75.75 0 0 1 3.75 3ZM9 9.75A1.75 1.75 0 0 1 10.75 8h.5A1.75 1.75 0 0 1 13 9.75v8.5A1.75 1.75 0 0 1 11.25 20h-.5A1.75 1.75 0 0 1 9 18.25v-8.5Zm6-5A1.75 1.75 0 0 1 16.75 3h.5A1.75 1.75 0 0 1 19 4.75v13.5A1.75 1.75 0 0 1 17.25 20h-.5A1.75 1.75 0 0 1 15 18.25V4.75Z"/></svg>
+              <span id="btnPlacarText">Ver Placar</span>
+            </button>
+            <button type="button" id="btnAdmin" class="w-full sm:w-auto inline-flex items-center gap-2 rounded-lg bg-violet-600 text-white px-5 py-3 hover:bg-violet-700 text-base h-12">
+              <!-- Heroicon: Lock -->
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" d="M12 1.5a5.25 5.25 0 0 0-5.25 5.25v3a3 3 0 0 0-3 3v6.75a3 3 0 0 0 3 3h10.5a3 3 0 0 0 3-3v-6.75a3 3 0 0 0-3-3v-3c0-2.9-2.35-5.25-5.25-5.25Zm3.75 8.25v-3a3.75 3.75 0 1 0-7.5 0v3h7.5Z" clip-rule="evenodd"/></svg>
+              Admin
+            </button>
+          </div>
+
+          <p id="message" class="hidden mt-4 text-sm text-center sm:text-left"></p>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    window.votingType = window.votingType || 'sindico';
+    window.votingConfig = null;
+    
+    window.addEventListener("load", functionInit);
+
+    function functionInit() {
+      // Carrega configuração da votação
+      loadVotingConfig();
+      
+      $('#btnBuscar').off('click').on('click', buscarCPF);
+      $('#btnVoltarPautas').off('click').on('click', function(){
+        navigateTo('pautas');
+      });
+      $('#btnTogglePlacar').off('click').on('click', function(){
+        togglePlacar();
+      });
+      $('#btnAtualizarPlacar').off('click').on('click', function(){
+        loadPlacar();
+      });
+      $('#btnAdmin').off('click').on('click', function(){
+        navigateTo('login');
+      });
+    }
+    
+    function togglePlacar() {
+      var placarSection = $('#placarSection');
+      if (placarSection.hasClass('hidden')) {
+        placarSection.removeClass('hidden');
+        $('#btnPlacarText').text('Ocultar Placar');
+        loadPlacar();
+        // Auto-atualiza a cada 5 segundos
+        if (window.placarInterval) clearInterval(window.placarInterval);
+        window.placarInterval = setInterval(loadPlacar, 5000);
+      } else {
+        placarSection.addClass('hidden');
+        $('#btnPlacarText').text('Ver Placar');
+        if (window.placarInterval) {
+          clearInterval(window.placarInterval);
+          window.placarInterval = null;
+        }
+      }
+    }
+    
+    function loadPlacar() {
+      var handler = google.script.run
+        .withSuccessHandler(function(res){
+          renderPlacar(res);
+        })
+        .withFailureHandler(function(e){
+          $('#placarContainer').html('<div class="text-red-500 text-center">Erro ao carregar placar: ' + (e && e.message ? e.message : e) + '</div>');
+        });
+      
+      if (window.votingType && window.votingType !== 'sindico') {
+        handler.getScoresGeneric(window.votingType);
+      } else {
+        handler.getScores();
+      }
+    }
+    
+    function renderPlacar(scores) {
+      var counts = scores.counts || {};
+      var total = scores.total || 0;
+      var candidatos = Object.keys(counts).sort();
+      
+      if (candidatos.length === 0) {
+        $('#placarContainer').html('<div class="text-gray-500 text-center">Nenhum voto registrado ainda</div>');
+        $('#placarTotal').text('');
+        return;
+      }
+      
+      var html = '<div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">';
+      candidatos.forEach(function(nome){
+        var count = counts[nome] || 0;
+        var pct = total ? Math.round(count * 100 / total) : 0;
+        html += '<div class="bg-white rounded-lg p-3 border border-gray-200">' +
+          '<div class="flex items-center justify-between mb-2">' +
+            '<span class="font-medium text-gray-800 text-sm">' + nome + '</span>' +
+            '<span class="text-xs text-gray-500">' + count + ' voto(s)</span>' +
+          '</div>' +
+          '<div class="w-full h-2 bg-gray-100 rounded-full overflow-hidden">' +
+            '<div class="h-2 bg-gradient-to-r from-indigo-500 to-purple-500" style="width:' + pct + '%"></div>' +
+          '</div>' +
+          '<div class="mt-1 text-xs text-gray-500">' + pct + '%</div>' +
+        '</div>';
+      });
+      html += '</div>';
+      $('#placarContainer').html(html);
+      $('#placarTotal').text('Total de votos: ' + total);
+    }
+    
+    function loadVotingConfig() {
+      google.script.run
+        .withSuccessHandler(function(config){
+          window.votingConfig = config;
+          updatePageWithConfig(config);
+        })
+        .withFailureHandler(function(e){
+          console.error('Erro ao carregar configuração:', e);
+          // Usa configuração padrão
+          window.votingConfig = {
+            titulo: window.votingType.charAt(0).toUpperCase() + window.votingType.slice(1),
+            descricao: 'Votação de ' + window.votingType,
+            candidatos: []
+          };
+          updatePageWithConfig(window.votingConfig);
+        })
+        .getVotingConfig(window.votingType);
+    }
+    
+    function updatePageWithConfig(config) {
+      // Atualiza título
+      $('h1').text('Formulário de Votação: ' + config.titulo);
+      $('title').text('Votação: ' + config.titulo);
+      
+      // Atualiza mensagem com descrição da pauta
+      var descricaoHtml = '';
+      if (config.descricao && config.descricao.trim()) {
+        descricaoHtml = '<p class="mb-2 text-sm leading-relaxed"><strong>' + config.descricao + '</strong></p>';
+      }
+      $('#pautaDescription').html(descricaoHtml);
+      
+      // Renderiza candidatos/opções
+      renderCandidates(config.candidatos);
+    }
+    
+    function renderCandidates(candidatos) {
+      if (!candidatos || candidatos.length === 0) {
+        $('#candidatesContainer').html('<p class="text-gray-500 text-center">Nenhuma opção disponível para esta votação.</p>');
+        return;
+      }
+      
+      var html = '';
+      candidatos.forEach(function(candidato){
+        html += '<div class="rounded-2xl border border-gray-100 bg-white p-4 sm:p-5 flex flex-col min-w-0">' +
+          '<div class="flex-1">' +
+            '<div class="text-lg font-semibold text-gray-800">' + candidato + '</div>' +
+            '<p class="text-sm text-gray-500">Opção</p>' +
+          '</div>' +
+          '<button type="button" data-cand="' + candidato + '" class="btnVote w-full mt-3 inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-600 text-white px-5 py-3 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-base h-12" disabled>Votar</button>' +
+        '</div>';
+      });
+      $('#candidatesContainer').html(html);
+    }
+    
+    function showVotedResult(voto) {
+      // Esconde as opções e mostra o resultado do voto
+      var html = '<div class="rounded-2xl border border-emerald-200 bg-emerald-50 p-6 text-center">' +
+        '<div class="flex items-center justify-center gap-3 mb-3">' +
+          '<svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-emerald-600" viewBox="0 0 24 24" fill="currentColor">' +
+            '<path fill-rule="evenodd" d="M2.25 12c0-2.248 0-4.122.116-5.527.119-1.44.36-2.527 1.035-3.388.676-.86 1.63-1.354 3.098-1.79C7.98.854 9.81.56 12 .56c2.19 0 4.019.294 5.501.736 1.469.436 2.422.93 3.098 1.79.676.861.916 1.948 1.035 3.388.116 1.405.116 3.279.116 5.527 0 2.248 0 4.123-.116 5.528-.119 1.44-.36 2.527-1.035 3.387-.676.862-1.63 1.356-3.098 1.792-1.482.441-3.311.735-5.501.735-2.19 0-4.02-.294-5.501-.735-1.469-.436-2.422-.93-3.098-1.792-.676-.86-.916-1.947-1.035-3.387C2.25 16.123 2.25 14.248 2.25 12Zm12.53-2.03a.75.75 0 0 0-1.06-1.06L11 11.62l-.72-.72a.75.75 0 1 0-1.06 1.06l1.25 1.25a.75.75 0 0 0 1.06 0l3.25-3.25Z" clip-rule="evenodd"/>' +
+          '</svg>' +
+          '<h3 class="text-xl font-semibold text-emerald-800">Voto Registrado</h3>' +
+        '</div>' +
+        '<p class="text-sm text-gray-600 mb-2">Você votou em:</p>' +
+        '<p class="text-lg font-bold text-emerald-700">' + voto + '</p>' +
+      '</div>';
+      $('#candidatesContainer').html(html);
+    }
+
+    function navigateTo(view, tipo) {
+      try {
+        google.script.run.withSuccessHandler(function(base){
+          var url = base || '';
+          var params = [];
+          if (view) params.push('view=' + encodeURIComponent(view));
+          if (tipo) params.push('tipo=' + encodeURIComponent(tipo));
+          if (params.length > 0) {
+            url += (url.indexOf('?') === -1 ? '?' : '&') + params.join('&');
+          }
+          window.top.location.href = url || ('?' + params.join('&'));
+        }).getWebAppUrl();
+      } catch (e) {
+        var params = [];
+        if (view) params.push('view=' + view);
+        if (tipo) params.push('tipo=' + tipo);
+        var a = document.createElement('a');
+        a.href = params.length > 0 ? ('?' + params.join('&')) : '?';
+        a.target = '_top';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      }
+    }
+
+    function setStatusMessage(text, type) {
+      var el = $('#message');
+      el.removeClass('hidden').removeClass('error').removeClass('text-emerald-700').removeClass('text-red-600');
+      if (type === 'error') {
+        el.addClass('text-red-600');
+      } else {
+        el.addClass('text-emerald-700');
+      }
+      el.text(text);
+    }
+
+    function buscarCPF() {
+      var cpf = $('#cpf').val();
+      if (!cpf) {
+        setStatusMessage('Por favor, digite um CPF para buscar.', 'error');
+        return;
+      }
+      $('#btnBuscar').prop('disabled', true).addClass('opacity-60');
+      google.script.run
+        .withSuccessHandler(function(res){
+          window.currentVoter = res;
+          $('#nome').val(res.nome).prop('readonly', true);
+          $('#apartamento').val(res.apartamento).prop('readonly', true);
+          $('#torre').val(res.torre).prop('readonly', true);
+          if (res.votou) {
+            // Se já votou, mostra o resultado do voto e esconde as opções
+            setStatusMessage('Você já votou nesta pauta.', 'ok');
+            showVotedResult(res.voto);
+            $('.btnVote').prop('disabled', true);
+          } else {
+            setStatusMessage('Dados encontrados. Escolha sua opção nos cartões abaixo e confirme o voto.', 'ok');
+            $('.btnVote').prop('disabled', false);
+          }
+        })
+        .withFailureHandler(function(e){
+          setStatusMessage((e && e.message) ? e.message : 'Erro ao buscar CPF.', 'error');
+          $('.btnVote').prop('disabled', true);
+        })
+        .getVoterGeneric(cpf, window.votingType);
+      setTimeout(function(){ $('#btnBuscar').prop('disabled', false).removeClass('opacity-60'); }, 500);
+    }
+
+    function successMessage(voto) {
+      setStatusMessage('Voto registrado com sucesso!', 'ok');
+      // Mostra o resultado do voto e esconde as opções
+      showVotedResult(voto);
+      // Desabilita os campos
+      $('#cpf').prop('readonly', true);
+      $('#btnBuscar').prop('disabled', true);
+      $('.btnVote').prop('disabled', true);
+      // Mostra o placar automaticamente após votar
+      if ($('#placarSection').hasClass('hidden')) {
+        $('#placarSection').removeClass('hidden');
+        $('#btnPlacarText').text('Ocultar Placar');
+        loadPlacar();
+        // Auto-atualiza a cada 5 segundos
+        if (window.placarInterval) clearInterval(window.placarInterval);
+        window.placarInterval = setInterval(loadPlacar, 5000);
+      } else {
+        // Atualiza o placar se já estiver visível
+        loadPlacar();
+      }
+    }
+
+    function errorMessage(error) {
+      setStatusMessage('Erro ao registrar voto: ' + (error && error.message ? error.message : error), 'error');
+      $('.btnVote').prop('disabled', false).removeClass('opacity-60');
+    }
+  </script>
+
+  <!-- Modal de Confirmação -->
+  <div id="confirmModal" class="hidden fixed inset-0 z-50 items-center justify-center bg-black/50">
+    <div class="mx-4 w-full max-w-md rounded-2xl bg-white p-6 shadow-lg">
+      <h3 class="text-lg font-semibold text-gray-800 mb-2">Confirmar voto</h3>
+      <p class="text-sm text-gray-600">Você confirma seu voto para <span id="confirmName" class="font-medium text-gray-800"></span>?</p>
+      <div class="mt-6 flex justify-end gap-2">
+        <button type="button" id="confirmCancel" class="rounded-lg border border-gray-300 px-4 py-2 text-gray-700 hover:bg-gray-50">Cancelar</button>
+        <button type="button" id="confirmConfirm" class="rounded-lg bg-emerald-600 px-4 py-2 text-white hover:bg-emerald-700">Confirmar</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    var selectedCandidate = '';
+    $(document).off('click', '.btnVote').on('click', '.btnVote', function(){
+      if (!window.currentVoter) {
+        setStatusMessage('Busque seu CPF antes de votar.', 'error');
+        return;
+      }
+      if (window.currentVoter && window.currentVoter.votou) {
+        setStatusMessage('Voto já registrado para este CPF!', 'error');
+        return;
+      }
+      selectedCandidate = $(this).data('cand');
+      $('#confirmName').text(selectedCandidate);
+      $('#confirmModal').removeClass('hidden').addClass('flex');
+    });
+
+    $('#confirmCancel').off('click').on('click', function(){
+      $('#confirmModal').addClass('hidden').removeClass('flex');
+      selectedCandidate = '';
+    });
+
+    $('#confirmConfirm').off('click').on('click', function(){
+      if (!selectedCandidate) return;
+      var cpf = $('#cpf').val();
+      $('#sindico').val(selectedCandidate);
+      $('.btnVote').prop('disabled', true).addClass('opacity-60');
+      $('#confirmModal').addClass('hidden').removeClass('flex');
+      google.script.run
+        .withSuccessHandler(function(){
+          successMessage(selectedCandidate);
+        })
+        .withFailureHandler(errorMessage)
+        .saveVoteGeneric(cpf, selectedCandidate, window.votingType);
+    });
+  </script>
+</body>
+</html>

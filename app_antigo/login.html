@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Login Administrativo</title>
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script>window.jQuery || document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"><\/script>');</script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>if (!window.tailwind) { document.write('<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css">'); }</script>
+</head>
+<body>
+  <div class="min-h-screen bg-gradient-to-br from-violet-50 to-purple-50 py-6 sm:py-10 px-3 sm:px-4 flex items-center justify-center">
+    <div class="max-w-md w-full">
+      <div class="bg-white rounded-2xl shadow-xl p-6 sm:p-8">
+        <div class="flex flex-col items-center mb-6">
+          <div class="p-3 rounded-xl bg-violet-100 text-violet-700 mb-4">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" viewBox="0 0 24 24" fill="currentColor">
+              <path fill-rule="evenodd" d="M12 1.5a5.25 5.25 0 0 0-5.25 5.25v3a3 3 0 0 0-3 3v6.75a3 3 0 0 0 3 3h10.5a3 3 0 0 0 3-3v-6.75a3 3 0 0 0-3-3v-3c0-2.9-2.35-5.25-5.25-5.25Zm3.75 8.25v-3a3.75 3.75 0 1 0-7.5 0v3h7.5Z" clip-rule="evenodd"/>
+            </svg>
+          </div>
+          <h1 class="text-2xl font-semibold text-gray-800 mb-2">Acesso Administrativo</h1>
+          <p class="text-sm text-gray-500 text-center">Digite seu CPF e senha para acessar a área administrativa</p>
+        </div>
+
+        <form id="loginForm" autocomplete="off">
+          <div class="mb-4">
+            <label for="cpf" class="block text-sm font-medium text-gray-700 mb-1">CPF</label>
+            <input type="text" id="cpf" name="cpf" class="w-full rounded-lg border-gray-300 focus:border-violet-500 focus:ring-violet-500 h-12 text-base" placeholder="Digite seu CPF" required autofocus>
+          </div>
+
+          <div class="mb-6">
+            <label for="senha" class="block text-sm font-medium text-gray-700 mb-1">Senha</label>
+            <input type="password" id="senha" name="senha" class="w-full rounded-lg border-gray-300 focus:border-violet-500 focus:ring-violet-500 h-12 text-base" placeholder="Digite sua senha" required>
+          </div>
+
+          <button type="submit" id="btnLogin" class="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-violet-600 text-white px-5 py-3 hover:bg-violet-700 text-base h-12 font-medium">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+              <path fill-rule="evenodd" d="M7.5 3.75a1.5 1.5 0 0 0-1.5 1.5v3.75h-3a.75.75 0 0 0 0 1.5h3v7.5h-3a.75.75 0 0 0 0 1.5h3V21a1.5 1.5 0 0 0 1.5 1.5h9a1.5 1.5 0 0 0 1.5-1.5v-3.75h3a.75.75 0 0 0 0-1.5h-3v-7.5h3a.75.75 0 0 0 0-1.5h-3V5.25a1.5 1.5 0 0 0-1.5-1.5h-9Z" clip-rule="evenodd"/>
+            </svg>
+            Entrar
+          </button>
+
+          <p id="message" class="hidden mt-4 text-sm text-center"></p>
+        </form>
+
+        <div class="mt-6 text-center">
+          <button type="button" id="btnVoltar" class="text-sm text-violet-600 hover:text-violet-700 font-medium">
+            ← Voltar para votação
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function setStatusMessage(text, type) {
+      var el = $('#message');
+      el.removeClass('hidden').removeClass('text-red-600').removeClass('text-violet-700');
+      if (type === 'error') {
+        el.addClass('text-red-600');
+      } else {
+        el.addClass('text-violet-700');
+      }
+      el.text(text);
+    }
+
+    function navigateTo(view) {
+      // Redirecionamento direto e simples - mais confiável
+      try {
+        var currentUrl = window.location.href;
+        var baseUrl = currentUrl.split('?')[0];
+        var newUrl = baseUrl + '?view=' + encodeURIComponent(view);
+        
+        // Força redirecionamento usando location.replace para evitar problemas de histórico
+        if (window.top && window.top !== window) {
+          window.top.location.replace(newUrl);
+        } else {
+          window.location.replace(newUrl);
+        }
+      } catch (e) {
+        console.error('Erro no redirecionamento:', e);
+        // Fallback: cria link e clica
+        try {
+          var a = document.createElement('a');
+          a.href = '?view=' + encodeURIComponent(view);
+          a.target = '_top';
+          document.body.appendChild(a);
+          a.click();
+          setTimeout(function() {
+            if (a.parentNode) {
+              document.body.removeChild(a);
+            }
+          }, 100);
+        } catch (e2) {
+          // Último recurso: recarrega com parâmetro
+          window.location.href = '?view=' + encodeURIComponent(view);
+        }
+      }
+    }
+
+    $(function(){
+      $('#loginForm').on('submit', function(e){
+        e.preventDefault();
+        var cpf = $('#cpf').val();
+        var senha = $('#senha').val();
+        if (!cpf || !senha) {
+          setStatusMessage('Por favor, preencha todos os campos.', 'error');
+          return;
+        }
+        $('#btnLogin').prop('disabled', true).addClass('opacity-60');
+        google.script.run
+          .withSuccessHandler(function(res){
+            if (res.success) {
+              setStatusMessage('Login realizado com sucesso! Redirecionando...', 'ok');
+              // Salva no sessionStorage
+              try {
+                sessionStorage.setItem('adminAuth', JSON.stringify(res));
+              } catch (e) {
+                console.error('Erro ao salvar sessionStorage:', e);
+              }
+              // Pequeno delay para garantir que o sessionStorage seja salvo
+              setTimeout(function(){
+                navigateTo('admin');
+              }, 100);
+            }
+          })
+          .withFailureHandler(function(e){
+            setStatusMessage((e && e.message) ? e.message : 'Erro ao fazer login. Verifique suas credenciais.', 'error');
+            $('#btnLogin').prop('disabled', false).removeClass('opacity-60');
+          })
+          .authenticateAdmin(cpf, senha);
+      });
+
+      $('#btnVoltar').on('click', function(){
+        navigateTo('pautas');
+      });
+    });
+  </script>
+</body>
+</html>
+

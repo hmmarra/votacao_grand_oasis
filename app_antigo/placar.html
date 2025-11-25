@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Placar da Votação</title>
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script>window.jQuery || document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"><\/script>');</script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>if (!window.tailwind) { document.write('<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css">'); }</script>
+</head>
+<body>
+  <noscript>
+    <div style="padding:12px;background:#fee2e2;color:#991b1b;font-family:system-ui,Arial;border-radius:8px;max-width:640px;margin:16px auto;">
+      O JavaScript está desabilitado. Ative o JavaScript para visualizar o placar.
+    </div>
+  </noscript>
+  <div class="min-h-screen bg-gray-50 py-6 sm:py-10 px-3 sm:px-4 text-sm sm:text-base">
+    <div class="max-w-3xl mx-auto">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4 sm:mb-6">
+        <div class="flex items-center gap-3">
+          <div class="p-2 rounded-xl bg-sky-100 text-sky-700">
+            <!-- Heroicon: Chart Bar -->
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="currentColor"><path d="M3.75 3a.75.75 0 0 1 .75.75v15a.75.75 0 1 1-1.5 0v-15A.75.75 0 0 1 3.75 3ZM9 9.75A1.75 1.75 0 0 1 10.75 8h.5A1.75 1.75 0 0 1 13 9.75v8.5A1.75 1.75 0 0 1 11.25 20h-.5A1.75 1.75 0 0 1 9 18.25v-8.5Zm6-5A1.75 1.75 0 0 1 16.75 3h.5A1.75 1.75 0 0 1 19 4.75v13.5A1.75 1.75 0 0 1 17.25 20h-.5A1.75 1.75 0 0 1 15 18.25V4.75Z"/></svg>
+          </div>
+          <div>
+            <h1 class="text-2xl font-semibold text-gray-800 leading-snug">Placar em Tempo Real</h1>
+            <p class="text-sm text-gray-500">Acompanhe os votos computados.</p>
+          </div>
+        </div>
+        <button id="btnVoltar" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 text-white px-5 py-3 hover:bg-indigo-700 text-base h-12">
+          <!-- Heroicon: Arrow Left -->
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" d="M19.5 12a.75.75 0 0 1-.75.75H7.31l3.22 3.22a.75.75 0 1 1-1.06 1.06l-4.5-4.5a.75.75 0 0 1 0-1.06l4.5-4.5a.75.75 0 1 1 1.06 1.06l-3.22 3.22h11.44c.414 0 .75.336.75.75Z" clip-rule="evenodd"/></svg>
+          Voltar
+        </button>
+      </div>
+
+      <div id="fallback" class="hidden mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-amber-800 text-sm"></div>
+
+      <div class="mb-4 sm:mb-6 rounded-2xl border border-indigo-100 bg-indigo-50 p-4 text-indigo-900">
+        <div class="text-sm font-medium">Criado por: <span class="font-semibold">Conselho Grand Oasis Poá</span></div>
+        <p class="mt-2 text-sm leading-relaxed">
+          Este formulário foi elaborado exclusivamente para a votação a ser realizada na <strong>Assembleia Geral</strong> marcada para o dia <strong>09 de agosto de 2025</strong>, conforme convocação oficial. Sua validade restringe-se ao dia e horário da referida assembleia, conforme registrados em ata.
+        </p>
+        <p class="mt-2 text-xs text-indigo-800">
+          Votos emitidos fora do horário estipulado para a assembleia ou em desacordo com as normas estabelecidas não serão considerados válidos.
+        </p>
+      </div>
+
+      <div class="bg-white rounded-2xl shadow p-4 sm:p-6">
+        <div id="cards" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4"></div>
+        <p id="total" class="mt-6 text-sm text-gray-600"></p>
+        <p id="erro" class="mt-4 text-sm text-red-600 hidden"></p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    window.votingType = window.votingType || 'sindico';
+    
+    function showFallback(msg){
+      $('#fallback').removeClass('hidden').text(msg);
+    }
+    function renderScores(scores){
+      var counts = scores.counts || {};
+      var total = scores.total || 0;
+      var candidatos = Object.keys(counts).length ? Object.keys(counts) : ['Sinal','Gilson','Roger'];
+      var palette = {
+        'Sinal': 'from-rose-500 to-pink-500',
+        'Gilson': 'from-emerald-500 to-teal-500',
+        'Roger': 'from-sky-500 to-indigo-500'
+      };
+      var icons = {
+        'Sinal': '<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25Z"/><path fill="#fff" d="M10.5 15.75 7.5 12.75l1.06-1.06L10.5 13.63l4.94-4.94 1.06 1.06-6 6Z"/></svg>',
+        'Gilson': '<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.25a9.75 9.75 0 1 0 0 19.5 9.75 9.75 0 0 0 0-19.5Z"/><path fill="#fff" d="M8.25 12h7.5v1.5h-7.5z"/></svg>',
+        'Roger': '<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25Z"/><path fill="#fff" d="M12 6.75 17.25 12 12 17.25 6.75 12 12 6.75Z"/></svg>'
+      };
+
+      var html = '';
+      candidatos.forEach(function(nome){
+        var count = counts[nome] || 0;
+        var pct = total ? Math.round(count * 100 / total) : 0;
+        var grad = palette[nome] || 'from-gray-500 to-gray-700';
+        var icon = icons[nome] || '';
+        html += '<div class="rounded-xl border border-gray-100 p-4">' +
+          '<div class="flex items-center justify-between mb-2">' +
+            '<div class="flex items-center gap-2">' +
+              '<div class="p-2 rounded-lg bg-gray-50">'+ icon +'</div>' +
+              '<span class="font-medium text-gray-800">'+ nome +'</span>' +
+            '</div>' +
+            '<span class="text-sm text-gray-500">'+ count +' voto(s)</span>' +
+          '</div>' +
+          '<div class="w-full h-3 bg-gray-100 rounded-full overflow-hidden">' +
+            '<div class="h-3 bg-gradient-to-r '+ grad +'" style="width:'+ pct +'%"></div>' +
+          '</div>' +
+          '<div class="mt-1 text-xs text-gray-500">'+ pct +'%</div>' +
+        '</div>';
+      });
+      $('#cards').html(html);
+      $('#total').text('Total de votos: ' + total);
+    }
+
+    function loadScores(){
+      if (!google || !google.script || !google.script.run){
+        showFallback('Não foi possível inicializar o Google Apps Script. Recarregue a página ou acesse pela URL do Web App.');
+        return;
+      }
+      // Usa função genérica se tiver tipo diferente de sindico, senão usa a antiga
+      var handler = google.script.run
+        .withSuccessHandler(function(res){
+          $('#erro').addClass('hidden');
+          renderScores(res);
+        })
+        .withFailureHandler(function(e){
+          $('#erro').removeClass('hidden').text('Erro ao carregar placar: ' + (e && e.message ? e.message : e));
+        });
+      
+      if (window.votingType && window.votingType !== 'sindico') {
+        handler.getScoresGeneric(window.votingType);
+      } else {
+        handler.getScores();
+      }
+    }
+
+    $(function(){
+      // Indício visual caso scripts não inicializem
+      setTimeout(function(){
+        if (!document.getElementById('_init_ok')){
+          showFallback('Carregando... Caso a página permaneça em branco, publique/implante o Web App novamente e acesse a URL da última implantação.');
+        }
+      }, 1000);
+      console.log('Placar carregado');
+      $('body').append('<span style="display:none" id="_init_ok">ok</span>');
+      loadScores();
+      setInterval(loadScores, 5000);
+      $('#btnVoltar').on('click', function(){
+        try {
+          google.script.run.withSuccessHandler(function(base){
+            var url = base || '';
+            var params = ['view=index'];
+            if (window.votingType) params.push('tipo=' + encodeURIComponent(window.votingType));
+            url += (url.indexOf('?') === -1 ? '?' : '&') + params.join('&');
+            window.top.location.href = url || ('?' + params.join('&'));
+          }).getWebAppUrl();
+        } catch (e) {
+          var params = ['view=index'];
+          if (window.votingType) params.push('tipo=' + window.votingType);
+          var a = document.createElement('a');
+          a.href = '?' + params.join('&');
+          a.target = '_top';
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+        }
+      });
+    });
+  </script>
+</body>
+</html>
