@@ -219,7 +219,6 @@ export const firebaseApi = {
     }
     
     // Verificar se já votou nesta pauta (buscar qualquer voto desse CPF)
-    const dbInstance = ensureDb()
     const votosRef = collection(dbInstance, 'votos')
     const votoQuery = query(
       votosRef,
