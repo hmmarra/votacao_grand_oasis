@@ -269,29 +269,40 @@ export function GerenciarMoradoresTab() {
   return (
     <div>
       <div className="mb-6">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Gerenciar Moradores</h3>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setShowUploadModal(true)}
-              className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 text-white px-4 py-2 hover:bg-indigo-700 text-sm font-medium transition-colors"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-                <path fillRule="evenodd" d="M11.47 2.47a.75.75 0 0 1 1.06 0l4.5 4.5a.75.75 0 0 1-1.06 1.06l-3.22-3.22V16.5a.75.75 0 0 1-1.5 0V4.81L8.03 8.03a.75.75 0 0 1-1.06-1.06l4.5-4.5ZM3 15.75a.75.75 0 0 1 .75.75h16.5a.75.75 0 0 1 0 1.5H3.75a.75.75 0 0 1-.75-.75Z" clipRule="evenodd"/>
-              </svg>
-              Upload Planilha
-            </button>
-            <button
-              onClick={() => setShowModal(true)}
-              className="inline-flex items-center gap-2 rounded-lg bg-violet-600 text-white px-4 py-2 hover:bg-violet-700 text-sm font-medium transition-colors"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M11 11V5h2v6h6v2h-6v6h-2v-6H5v-2h6Z"/>
-              </svg>
-              Novo Usuário
-            </button>
-          </div>
+        <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-4">Gerenciar Moradores</h3>
+        <div className="flex flex-col sm:flex-row gap-3 sm:justify-end">
+          <button
+            onClick={() => setShowUploadModal(true)}
+            className="inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 text-white px-4 py-2.5 hover:bg-indigo-700 text-sm font-medium transition-colors h-10"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+              <path fillRule="evenodd" d="M11.47 2.47a.75.75 0 0 1 1.06 0l4.5 4.5a.75.75 0 0 1-1.06 1.06l-3.22-3.22V16.5a.75.75 0 0 1-1.5 0V4.81L8.03 8.03a.75.75 0 0 1-1.06-1.06l4.5-4.5ZM3 15.75a.75.75 0 0 1 .75.75h16.5a.75.75 0 0 1 0 1.5H3.75a.75.75 0 0 1-.75-.75Z" clipRule="evenodd"/>
+            </svg>
+            Upload Planilha
+          </button>
+          <button
+            onClick={() => {
+              setFormData({
+                cpf: '',
+                nome: '',
+                apartamento: '',
+                torre: '',
+                acesso: 'Morador',
+                email: '',
+                isMaster: false
+              })
+              setEditingMorador(null)
+              setShowModal(true)
+            }}
+            className="inline-flex items-center justify-center gap-2 rounded-lg bg-violet-600 text-white px-4 py-2.5 hover:bg-violet-700 text-sm font-medium transition-colors h-10"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+              <path fillRule="evenodd" d="M12 3.75a.75.75 0 0 1 .75.75v6.75h6.75a.75.75 0 0 1 0 1.5h-6.75v6.75a.75.75 0 0 1-1.5 0v-6.75H4.5a.75.75 0 0 1 0-1.5h6.75V4.5a.75.75 0 0 1 .75-.75Z" clipRule="evenodd"/>
+            </svg>
+            Novo Usuário
+          </button>
         </div>
+      </div>
 
         {message && (
           <div className={`mb-4 p-3 rounded-lg ${

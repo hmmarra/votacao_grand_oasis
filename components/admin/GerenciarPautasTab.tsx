@@ -140,18 +140,20 @@ export function GerenciarPautasTab() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Gerenciar Pautas</h3>
-        <button
-          onClick={() => openModal()}
-          className="inline-flex items-center gap-2 rounded-lg bg-violet-600 text-white px-5 py-3 hover:bg-violet-700 text-base h-12"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M11.47 3.84a.75.75 0 0 1 1.06 0l8.69 8.69a.75.75 0 1 0 1.06-1.06l-8.689-8.69a2.25 2.25 0 0 0-3.182 0l-8.69 8.69a.75.75 0 0 0 1.061 1.06l8.69-8.69Z"/>
-            <path d="m12 5.432 8.159 8.159c.03.03.06.058.091.086v6.198c0 1.035-.84 1.875-1.875 1.875H15a.75.75 0 0 1-.75-.75v-4.5a.75.75 0 0 0-.75-.75h-3a.75.75 0 0 0-.75.75V21a.75.75 0 0 1-.75.75H5.625a1.875 1.875 0 0 1-1.875-1.875v-6.198a2.29 2.29 0 0 0 .091-.086L12 5.432Z"/>
-          </svg>
-          Nova Pauta
-        </button>
+      <div className="mb-6">
+        <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-4">Gerenciar Pautas</h3>
+        <div className="flex flex-col sm:flex-row gap-3 sm:justify-end">
+          <button
+            onClick={() => openModal()}
+            className="inline-flex items-center justify-center gap-2 rounded-lg bg-violet-600 text-white px-4 py-2.5 hover:bg-violet-700 text-sm font-medium transition-colors h-10"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M11.47 3.84a.75.75 0 0 1 1.06 0l8.69 8.69a.75.75 0 1 0 1.06-1.06l-8.689-8.69a2.25 2.25 0 0 0-3.182 0l-8.69 8.69a.75.75 0 0 0 1.061 1.06l8.69-8.69Z"/>
+              <path d="m12 5.432 8.159 8.159c.03.03.06.058.091.086v6.198c0 1.035-.84 1.875-1.875 1.875H15a.75.75 0 0 1-.75-.75v-4.5a.75.75 0 0 0-.75-.75h-3a.75.75 0 0 0-.75.75V21a.75.75 0 0 1-.75.75H5.625a1.875 1.875 0 0 1-1.875-1.875v-6.198a2.29 2.29 0 0 0 .091-.086L12 5.432Z"/>
+            </svg>
+            Nova Pauta
+          </button>
+        </div>
       </div>
 
       {message && (
@@ -302,7 +304,7 @@ export function GerenciarPautasTab() {
       {showModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
+            <div className="p-4 sm:p-6">
               <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-6">
                 {editingIndex !== null ? 'Editar Pauta' : 'Nova Pauta'}
               </h3>
@@ -316,7 +318,7 @@ export function GerenciarPautasTab() {
                     type="text"
                     value={formData.nomePauta}
                     onChange={(e) => handleNomePautaChange(e.target.value)}
-                    className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-violet-500 focus:ring-violet-500 h-12"
+                    className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-violet-500 focus:ring-violet-500 h-12 px-4 text-sm break-words"
                     required
                   />
                 </div>
@@ -329,7 +331,8 @@ export function GerenciarPautasTab() {
                     type="text"
                     value={formData.aba}
                     readOnly
-                    className="w-full rounded-lg border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 dark:text-white h-12"
+                    className="w-full rounded-lg border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 dark:text-white h-12 px-4 text-sm break-all overflow-hidden"
+                    title={formData.aba}
                   />
                   <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Gerado automaticamente em camelCase</p>
                 </div>
@@ -341,7 +344,7 @@ export function GerenciarPautasTab() {
                   <textarea
                     value={formData.descricao}
                     onChange={(e) => setFormData({ ...formData, descricao: e.target.value })}
-                    className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-violet-500 focus:ring-violet-500"
+                    className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-violet-500 focus:ring-violet-500 px-4 py-3 text-sm resize-none break-words"
                     rows={3}
                   />
                 </div>
@@ -354,7 +357,7 @@ export function GerenciarPautasTab() {
                     type="text"
                     value={formData.opcoes}
                     onChange={(e) => setFormData({ ...formData, opcoes: e.target.value })}
-                    className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-violet-500 focus:ring-violet-500 h-12"
+                    className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-violet-500 focus:ring-violet-500 h-12 px-4 text-sm break-words"
                     placeholder="Ex: Sim, Não, Abstenção"
                     required
                   />
