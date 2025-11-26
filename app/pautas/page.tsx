@@ -62,7 +62,7 @@ export default function PautasPage() {
     try {
       setLoading(true)
       setError(null)
-      const data = await api.getAllPautas()
+      const data: Pauta[] = await api.getAllPautas()
       setAllPautas(data)
       
       // Carregar placares para todas as pautas
