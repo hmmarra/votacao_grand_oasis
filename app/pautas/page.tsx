@@ -161,7 +161,7 @@ export default function PautasPage() {
               Votação Liberada
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {pautasLiberadas.map((pauta, index) => (
+              {pautasLiberadas.map((pauta: Pauta, index: number) => (
                 <div
                   key={pauta.id || index}
                   className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg hover:shadow-xl transition-shadow flex flex-col h-full"
@@ -270,7 +270,7 @@ export default function PautasPage() {
               Votação Planejada
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {pautasPlanejadas.map((pauta, index) => (
+              {pautasPlanejadas.map((pauta: Pauta, index: number) => (
                 <div
                   key={pauta.id || index}
                   className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg opacity-75 flex flex-col h-full border-2 border-blue-200 dark:border-blue-800"
@@ -379,7 +379,7 @@ export default function PautasPage() {
               Votação Bloqueada
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {pautasBloqueadas.map((pauta, index) => (
+              {pautasBloqueadas.map((pauta: Pauta, index: number) => (
                 <div
                   key={pauta.id || index}
                   className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg opacity-75 flex flex-col h-full border-2 border-red-200 dark:border-red-800"
