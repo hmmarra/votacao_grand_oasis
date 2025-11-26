@@ -435,7 +435,7 @@ export function VisualizarPautaTab() {
             <div className="mt-4">
               <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">Opções</p>
               <div className="flex flex-wrap gap-2">
-                {pautaData.opcoes.map((opcao, idx) => (
+                {pautaData.opcoes.map((opcao: string, idx: number) => (
                   <span
                     key={idx}
                     className="px-3 py-1 rounded-full text-sm bg-violet-100 dark:bg-violet-900 text-violet-700 dark:text-violet-300"
