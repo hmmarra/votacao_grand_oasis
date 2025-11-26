@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react'
 import { api, Pauta, Placar } from '@/lib/api-config'
+import { useBodyScrollLock } from '@/hooks/useBodyScrollLock'
 
 export function VisualizarPautaTab() {
   // Função para formatar timestamp do Firestore

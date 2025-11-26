@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { api, Morador } from '@/lib/api-config'
 import * as XLSX from 'xlsx'
+import { useBodyScrollLock } from '@/hooks/useBodyScrollLock'
 
 export function GerenciarMoradoresTab() {
   const [moradores, setMoradores] = useState<Morador[]>([])
@@ -34,6 +35,9 @@ export function GerenciarMoradoresTab() {
   })
   const [showUploadModal, setShowUploadModal] = useState(false)
   const [fileInputKey, setFileInputKey] = useState(0)
+  
+  // Bloquear scroll do body quando modais estiverem abertos
+  useBodyScrollLock(showModal || showUploadModal || editingMorador !== null)
 
   useEffect(() => {
     loadMoradores()

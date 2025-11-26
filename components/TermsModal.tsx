@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
+import { useBodyScrollLock } from '@/hooks/useBodyScrollLock'
 
 interface TermsModalProps {
   isOpen: boolean
@@ -9,6 +10,9 @@ interface TermsModalProps {
 }
 
 export function TermsModal({ isOpen, onClose, type }: TermsModalProps) {
+  // Bloquear scroll do body quando modal estiver aberto
+  useBodyScrollLock(isOpen)
+  
   // Fechar com ESC
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -19,13 +23,10 @@ export function TermsModal({ isOpen, onClose, type }: TermsModalProps) {
 
     if (isOpen) {
       document.addEventListener('keydown', handleEscape)
-      // Prevenir scroll do body quando modal está aberto
-      document.body.style.overflow = 'hidden'
     }
 
     return () => {
       document.removeEventListener('keydown', handleEscape)
-      document.body.style.overflow = 'unset'
     }
   }, [isOpen, onClose])
 

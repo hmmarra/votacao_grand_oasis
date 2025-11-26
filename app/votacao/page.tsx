@@ -7,6 +7,7 @@ import { ProtectedRoute } from '@/components/ProtectedRoute'
 import { Footer } from '@/components/Footer'
 import { useAuth } from '@/lib/auth'
 import { api, VotingConfig, VoterStatus, Placar } from '@/lib/api-config'
+import { useBodyScrollLock } from '@/hooks/useBodyScrollLock'
 
 function VotacaoContent() {
   const router = useRouter()
@@ -22,6 +23,9 @@ function VotacaoContent() {
   const [showConfirmModal, setShowConfirmModal] = useState(false)
   const [pendingVote, setPendingVote] = useState<string | null>(null)
   const [pautaStatus, setPautaStatus] = useState<string | null>(null)
+  
+  // Bloquear scroll do body quando modal estiver aberto
+  useBodyScrollLock(showConfirmModal)
 
   useEffect(() => {
     if (authLoading) return
@@ -416,6 +420,18 @@ function VotacaoContent() {
             {showConfirmModal && pendingVote && (
               <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
                 <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full p-6 sm:p-8">
+                  <div className="flex items-center justify-end mb-4">
+                    <button
+                      onClick={cancelVote}
+                      disabled={loading}
+                      className="p-2 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      aria-label="Fechar"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 24 24" fill="currentColor">
+                        <path fillRule="evenodd" d="M5.47 5.47a.75.75 0 0 1 1.06 0L12 10.94l5.47-5.47a.75.75 0 1 1 1.06 1.06L13.06 12l5.47 5.47a.75.75 0 1 1-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 0 1-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 0 1 0-1.06Z" clipRule="evenodd"/>
+                      </svg>
+                    </button>
+                  </div>
                   <div className="text-center mb-6">
                     <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-400 mb-4">
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" viewBox="0 0 24 24" fill="currentColor">
