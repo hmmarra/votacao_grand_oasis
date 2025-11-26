@@ -277,7 +277,7 @@ export default function VotacaoPage() {
                   {voter?.votou ? `Você votou em "${voter.voto}". Altere sua opção (se necessário):` : 'Escolha sua opção de voto:'}
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
-                  {config.candidatos.map((candidato, index) => {
+                  {config.candidatos.map((candidato: string, index: number) => {
                     const isSelected = voter?.votou && voter?.voto === candidato
                     return (
                       <button
