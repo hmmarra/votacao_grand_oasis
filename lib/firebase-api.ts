@@ -173,7 +173,6 @@ export const firebaseApi = {
     const usuario = snapshot.docs[0].data()
     
     // Verificar se já votou
-    const dbInstance = ensureDb()
     const votosRef = collection(dbInstance, 'votos')
     const votoQuery = query(
       votosRef, 
