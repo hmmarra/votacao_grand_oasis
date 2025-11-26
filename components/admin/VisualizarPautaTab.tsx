@@ -276,120 +276,115 @@ export function VisualizarPautaTab() {
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
           Selecione uma Pauta
         </label>
-        <div className="flex gap-3">
-          <div className="flex-1 relative" style={{ zIndex: 1000 }}>
-            <button
-              ref={buttonRef}
-              type="button"
-              onClick={() => setShowPautaDropdown(!showPautaDropdown)}
-              className="w-full rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-violet-500 focus:ring-violet-500 h-12 px-4 text-left flex items-center justify-between"
+        <div className="relative" style={{ zIndex: 1000 }}>
+          <button
+            ref={buttonRef}
+            type="button"
+            onClick={() => setShowPautaDropdown(!showPautaDropdown)}
+            className="w-full rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-violet-500 focus:ring-violet-500 h-12 px-4 text-left flex items-center justify-between"
+          >
+            <span className={selectedPauta ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'}>
+              {selectedPauta 
+                ? pautas.find(p => p.aba === selectedPauta)?.nomePauta || 'Selecione...'
+                : 'Selecione...'}
+            </span>
+            <svg 
+              xmlns="http://www.w3.org/2000/svg" 
+              className={`h-5 w-5 text-gray-400 transition-transform ${showPautaDropdown ? 'rotate-180' : ''}`} 
+              viewBox="0 0 24 24" 
+              fill="currentColor"
             >
-              <span className={selectedPauta ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'}>
-                {selectedPauta 
-                  ? pautas.find(p => p.aba === selectedPauta)?.nomePauta || 'Selecione...'
-                  : 'Selecione...'}
-              </span>
-              <svg 
-                xmlns="http://www.w3.org/2000/svg" 
-                className={`h-5 w-5 text-gray-400 transition-transform ${showPautaDropdown ? 'rotate-180' : ''}`} 
-                viewBox="0 0 24 24" 
-                fill="currentColor"
-              >
-                <path fillRule="evenodd" d="M12.53 16.28a.75.75 0 0 1-1.06 0l-7.5-7.5a.75.75 0 0 1 1.06-1.06L12 14.69l6.97-6.97a.75.75 0 1 1 1.06 1.06l-7.5 7.5Z" clipRule="evenodd"/>
-              </svg>
-            </button>
-            
-            {showPautaDropdown && (
-              <div 
-                ref={dropdownRef}
-                className="fixed z-[9999] bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 max-h-64 overflow-hidden flex flex-col"
-                style={{ 
-                  top: `${dropdownPosition.top}px`,
-                  left: `${dropdownPosition.left}px`,
-                  width: `${dropdownPosition.width}px`
-                }}
-              >
-                {/* Campo de busca */}
-                <div className="p-2 border-b border-gray-200 dark:border-gray-700">
-                  <div className="relative">
-                    <input
-                      type="text"
-                      value={pautaSearchTerm}
-                      onChange={(e) => setPautaSearchTerm(e.target.value)}
-                      placeholder="Buscar pauta..."
-                      className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-violet-500 focus:ring-violet-500 h-10 px-4 pl-10 text-sm"
-                      autoFocus
-                    />
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-5 w-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-                      viewBox="0 0 24 24"
-                      fill="currentColor"
-                    >
-                      <path fillRule="evenodd" d="M10.5 3.75a6.75 6.75 0 1 0 0 13.5 6.75 6.75 0 0 0 0-13.5ZM2.25 10.5a8.25 8.25 0 1 1 14.59 5.28l4.69 4.69a.75.75 0 1 1-1.06 1.06l-4.69-4.69A8.25 8.25 0 0 1 2.25 10.5Z" clipRule="evenodd"/>
-                    </svg>
-                  </div>
-                </div>
-                
-                {/* Lista de opções */}
-                <div className="overflow-y-auto max-h-52">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSelectedPauta('')
-                      setShowPautaDropdown(false)
-                      setPautaSearchTerm('')
-                    }}
-                    className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 ${
-                      !selectedPauta ? 'bg-violet-50 dark:bg-violet-900/20 text-violet-600 dark:text-violet-400' : 'text-gray-700 dark:text-gray-300'
-                    }`}
+              <path fillRule="evenodd" d="M12.53 16.28a.75.75 0 0 1-1.06 0l-7.5-7.5a.75.75 0 0 1 1.06-1.06L12 14.69l6.97-6.97a.75.75 0 1 1 1.06 1.06l-7.5 7.5Z" clipRule="evenodd"/>
+            </svg>
+          </button>
+          
+          {showPautaDropdown && (
+            <div 
+              ref={dropdownRef}
+              className="fixed z-[9999] bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 max-h-64 overflow-hidden flex flex-col"
+              style={{ 
+                top: `${dropdownPosition.top}px`,
+                left: `${dropdownPosition.left}px`,
+                width: `${dropdownPosition.width}px`
+              }}
+            >
+              {/* Campo de busca */}
+              <div className="p-2 border-b border-gray-200 dark:border-gray-700">
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={pautaSearchTerm}
+                    onChange={(e) => setPautaSearchTerm(e.target.value)}
+                    placeholder="Buscar pauta..."
+                    className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-violet-500 focus:ring-violet-500 h-10 px-4 pl-10 text-sm"
+                    autoFocus
+                  />
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-5 w-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
                   >
-                    Selecione...
-                  </button>
-                  {pautas
-                    .filter(p => 
-                      !pautaSearchTerm || 
-                      p.nomePauta.toLowerCase().includes(pautaSearchTerm.toLowerCase()) ||
-                      p.aba.toLowerCase().includes(pautaSearchTerm.toLowerCase())
-                    )
-                    .map((p, idx) => (
-                      <button
-                        key={idx}
-                        type="button"
-                        onClick={() => {
-                          setSelectedPauta(p.aba)
-                          setShowPautaDropdown(false)
-                          setPautaSearchTerm('')
-                        }}
-                        className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 ${
-                          selectedPauta === p.aba 
-                            ? 'bg-violet-50 dark:bg-violet-900/20 text-violet-600 dark:text-violet-400 font-medium' 
-                            : 'text-gray-700 dark:text-gray-300'
-                        }`}
-                      >
-                        {p.nomePauta}
-                      </button>
-                    ))}
-                  {pautas.filter(p => 
+                    <path fillRule="evenodd" d="M10.5 3.75a6.75 6.75 0 1 0 0 13.5 6.75 6.75 0 0 0 0-13.5ZM2.25 10.5a8.25 8.25 0 1 1 14.59 5.28l4.69 4.69a.75.75 0 1 1-1.06 1.06l-4.69-4.69A8.25 8.25 0 0 1 2.25 10.5Z" clipRule="evenodd"/>
+                  </svg>
+                </div>
+              </div>
+              
+              {/* Lista de opções */}
+              <div className="overflow-y-auto max-h-52">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedPauta('')
+                    setShowPautaDropdown(false)
+                    setPautaSearchTerm('')
+                    setPautaData(null)
+                    setPlacar(null)
+                    setVotes([])
+                  }}
+                  className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 ${
+                    !selectedPauta ? 'bg-violet-50 dark:bg-violet-900/20 text-violet-600 dark:text-violet-400' : 'text-gray-700 dark:text-gray-300'
+                  }`}
+                >
+                  Selecione...
+                </button>
+                {pautas
+                  .filter(p => 
                     !pautaSearchTerm || 
                     p.nomePauta.toLowerCase().includes(pautaSearchTerm.toLowerCase()) ||
                     p.aba.toLowerCase().includes(pautaSearchTerm.toLowerCase())
-                  ).length === 0 && (
-                    <div className="px-4 py-2 text-sm text-gray-500 dark:text-gray-400 text-center">
-                      Nenhuma pauta encontrada
-                    </div>
-                  )}
-                </div>
+                  )
+                  .map((p, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => {
+                        setSelectedPauta(p.aba)
+                        setShowPautaDropdown(false)
+                        setPautaSearchTerm('')
+                        // O useEffect já vai carregar automaticamente quando selectedPauta mudar
+                      }}
+                      className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 ${
+                        selectedPauta === p.aba 
+                          ? 'bg-violet-50 dark:bg-violet-900/20 text-violet-600 dark:text-violet-400 font-medium' 
+                          : 'text-gray-700 dark:text-gray-300'
+                      }`}
+                    >
+                      {p.nomePauta}
+                    </button>
+                  ))}
+                {pautas.filter(p => 
+                  !pautaSearchTerm || 
+                  p.nomePauta.toLowerCase().includes(pautaSearchTerm.toLowerCase()) ||
+                  p.aba.toLowerCase().includes(pautaSearchTerm.toLowerCase())
+                ).length === 0 && (
+                  <div className="px-4 py-2 text-sm text-gray-500 dark:text-gray-400 text-center">
+                    Nenhuma pauta encontrada
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-          <button
-            onClick={loadPautaData}
-            disabled={!selectedPauta || loading}
-            className="inline-flex items-center gap-2 rounded-lg bg-violet-600 text-white px-5 py-3 hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed h-12"
-          >
-            Carregar Dados
-          </button>
+            </div>
+          )}
         </div>
       </div>
 

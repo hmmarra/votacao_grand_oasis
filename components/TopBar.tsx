@@ -1,13 +1,15 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import Image from 'next/image'
 import { ThemeToggle } from './ThemeToggle'
 import { useAuth } from '@/lib/auth'
 
 export function TopBar() {
   const router = useRouter()
+  const pathname = usePathname()
   const { user, logout } = useAuth()
+  const isAdminPage = pathname === '/admin'
 
   return (
     <header className="sticky top-0 z-50 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm">
@@ -42,13 +44,24 @@ export function TopBar() {
             {/* Admin Button (only for Administradores) */}
             {user?.acesso === 'Administrador' && (
               <button
-                onClick={() => router.push('/admin')}
+                onClick={() => router.push(isAdminPage ? '/pautas' : '/admin')}
                 className="inline-flex items-center gap-2 rounded-lg bg-violet-600 text-white px-4 py-2 hover:bg-violet-700 text-sm font-medium transition-colors h-9"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-                  <path fillRule="evenodd" d="M12 1.5a5.25 5.25 0 0 0-5.25 5.25v3a3 3 0 0 0-3 3v6.75a3 3 0 0 0 3 3h10.5a3 3 0 0 0 3-3v-6.75a3 3 0 0 0-3-3v-3c0-2.9-2.35-5.25-5.25-5.25Zm3.75 8.25v-3a3.75 3.75 0 1 0-7.5 0v3h7.5Z" clipRule="evenodd"/>
-                </svg>
-                Admin
+                {isAdminPage ? (
+                  <>
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                      <path fillRule="evenodd" d="M19.5 12a.75.75 0 0 1-.75.75H7.31l3.22 3.22a.75.75 0 1 1-1.06 1.06l-4.5-4.5a.75.75 0 0 1 0-1.06l4.5-4.5a.75.75 0 1 1 1.06 1.06l-3.22 3.22h11.44c.414 0 .75.336.75.75Z" clipRule="evenodd"/>
+                    </svg>
+                    Ir Pautas
+                  </>
+                ) : (
+                  <>
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                      <path fillRule="evenodd" d="M12 1.5a5.25 5.25 0 0 0-5.25 5.25v3a3 3 0 0 0-3 3v6.75a3 3 0 0 0 3 3h10.5a3 3 0 0 0 3-3v-6.75a3 3 0 0 0-3-3v-3c0-2.9-2.35-5.25-5.25-5.25Zm3.75 8.25v-3a3.75 3.75 0 1 0-7.5 0v3h7.5Z" clipRule="evenodd"/>
+                    </svg>
+                    Admin
+                  </>
+                )}
               </button>
             )}
 
