@@ -68,7 +68,7 @@ export default function PautasPage() {
       // Carregar placares para todas as pautas
       const placaresData: Record<string, Placar> = {}
       await Promise.all(
-        data.map(async (pauta) => {
+        data.map(async (pauta: Pauta) => {
           try {
             const placar = await api.getScores(pauta.aba)
             placaresData[pauta.aba] = placar
