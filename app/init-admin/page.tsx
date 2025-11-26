@@ -15,8 +15,8 @@ export default function InitAdminPage() {
 
       // Verificar se já existe
       if (!db) {
-        setError('Firebase não inicializado. Verifique as variáveis de ambiente.')
-        setLoading(false)
+        setStatus('error')
+        setMessage('Firebase não inicializado. Verifique as variáveis de ambiente.')
         return
       }
       
