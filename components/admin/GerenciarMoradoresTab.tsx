@@ -386,7 +386,7 @@ export function GerenciarMoradoresTab() {
                     <td className="py-3 px-4 text-gray-600 dark:text-gray-400">{morador.torre || '-'}</td>
                     <td className="py-3 px-4">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        morador.isMaster 
+                        (morador as any).isMaster 
                           ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300'
                           : morador.acesso === 'Administrador'
                           ? 'bg-violet-100 dark:bg-violet-900/30 text-violet-800 dark:text-violet-300'
