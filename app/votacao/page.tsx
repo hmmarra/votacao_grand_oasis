@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { TopBar } from '@/components/TopBar'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
@@ -8,7 +8,7 @@ import { Footer } from '@/components/Footer'
 import { useAuth } from '@/lib/auth'
 import { api, VotingConfig, VoterStatus, Placar } from '@/lib/api-config'
 
-export default function VotacaoPage() {
+function VotacaoContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const tipo = searchParams.get('tipo') || ''
@@ -183,8 +183,7 @@ export default function VotacaoPage() {
   }
 
   return (
-    <ProtectedRoute>
-      <div className="min-h-screen bg-gradient-to-br from-violet-50 via-purple-50 to-indigo-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex flex-col">
+    <div className="min-h-screen bg-gradient-to-br from-violet-50 via-purple-50 to-indigo-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex flex-col">
         <TopBar />
         <div className="flex-1 py-8 sm:py-12 px-4 sm:px-6 lg:px-8">
           <div className="max-w-5xl mx-auto">
@@ -469,7 +468,6 @@ export default function VotacaoPage() {
         </div>
         <Footer />
       </div>
-    </ProtectedRoute>
   )
 }
 
