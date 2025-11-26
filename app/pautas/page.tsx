@@ -192,12 +192,12 @@ export default function PautasPage() {
                           votos: placar?.counts[opcao] || 0
                         }))
                         // Encontrar a opção com mais votos
-                        const opcaoMaisVotada = opcoesComVotos.reduce((max, item) => 
+                        const opcaoMaisVotada = opcoesComVotos.reduce((max: { opcao: string; votos: number }, item: { opcao: string; votos: number }) => 
                           item.votos > max.votos ? item : max, 
                           opcoesComVotos[0] || { opcao: '', votos: 0 }
                         )
                         // Calcular total de votos para a porcentagem
-                        const totalVotos = opcoesComVotos.reduce((sum, item) => sum + item.votos, 0)
+                        const totalVotos = opcoesComVotos.reduce((sum: number, item: { opcao: string; votos: number }) => sum + item.votos, 0)
                         const porcentagem = totalVotos > 0 ? (opcaoMaisVotada.votos / totalVotos) * 100 : 0
                         
                         return (
@@ -301,12 +301,12 @@ export default function PautasPage() {
                           votos: placar?.counts[opcao] || 0
                         }))
                         // Encontrar a opção com mais votos
-                        const opcaoMaisVotada = opcoesComVotos.reduce((max, item) => 
+                        const opcaoMaisVotada = opcoesComVotos.reduce((max: { opcao: string; votos: number }, item: { opcao: string; votos: number }) => 
                           item.votos > max.votos ? item : max, 
                           opcoesComVotos[0] || { opcao: '', votos: 0 }
                         )
                         // Calcular total de votos para a porcentagem
-                        const totalVotos = opcoesComVotos.reduce((sum, item) => sum + item.votos, 0)
+                        const totalVotos = opcoesComVotos.reduce((sum: number, item: { opcao: string; votos: number }) => sum + item.votos, 0)
                         const porcentagem = totalVotos > 0 ? (opcaoMaisVotada.votos / totalVotos) * 100 : 0
                         
                         return (
@@ -410,12 +410,12 @@ export default function PautasPage() {
                           votos: placar?.counts[opcao] || 0
                         }))
                         // Encontrar a opção com mais votos
-                        const opcaoMaisVotada = opcoesComVotos.reduce((max, item) => 
+                        const opcaoMaisVotada = opcoesComVotos.reduce((max: { opcao: string; votos: number }, item: { opcao: string; votos: number }) => 
                           item.votos > max.votos ? item : max, 
                           opcoesComVotos[0] || { opcao: '', votos: 0 }
                         )
                         // Calcular total de votos para a porcentagem
-                        const totalVotos = opcoesComVotos.reduce((sum, item) => sum + item.votos, 0)
+                        const totalVotos = opcoesComVotos.reduce((sum: number, item: { opcao: string; votos: number }) => sum + item.votos, 0)
                         const porcentagem = totalVotos > 0 ? (opcaoMaisVotada.votos / totalVotos) * 100 : 0
                         
                         return (
