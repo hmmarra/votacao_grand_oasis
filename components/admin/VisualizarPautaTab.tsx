@@ -414,7 +414,9 @@ export function VisualizarPautaTab() {
               </div>
               <div>
                 <p className="text-sm text-gray-500 dark:text-gray-400">Nome da Aba</p>
-                <p className="text-base font-medium text-gray-800 dark:text-gray-100">{pautaData.aba}</p>
+                <p className="text-base font-medium text-gray-800 dark:text-gray-100 truncate break-all" title={pautaData.aba}>
+                  {pautaData.aba}
+                </p>
               </div>
               <div>
                 <p className="text-sm text-gray-500 dark:text-gray-400">Total de Votos</p>
