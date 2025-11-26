@@ -392,9 +392,9 @@ export function GerenciarMoradoresTab() {
                           ? 'bg-violet-100 dark:bg-violet-900/30 text-violet-800 dark:text-violet-300'
                           : 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300'
                       }`}>
-                        {morador.isMaster 
+                        {(morador as any).isMaster 
                           ? 'Administrador (Mestre)'
-                          : morador.acesso || 'Morador'
+                          : (morador as any).acesso || 'Morador'
                         }
                       </span>
                     </td>
