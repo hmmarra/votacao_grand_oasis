@@ -83,7 +83,7 @@ export function VisualizarPautaTab() {
       setPautaData(pauta)
       setPlacar(scores)
       // Garantir que todos os campos sejam strings para busca
-      setVotes(votesData.map(vote => ({
+      setVotes(votesData.map((vote: any) => ({
         ...vote,
         cpf: String(vote.cpf || ''),
         nome: String(vote.nome || ''),
