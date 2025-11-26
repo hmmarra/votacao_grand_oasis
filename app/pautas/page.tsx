@@ -187,7 +187,7 @@ export default function PautasPage() {
                       <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">Opções disponíveis:</p>
                       {(() => {
                         const placar = placares[pauta.aba]
-                        const opcoesComVotos = pauta.opcoes.map(opcao => ({
+                        const opcoesComVotos = pauta.opcoes.map((opcao: string) => ({
                           opcao,
                           votos: placar?.counts[opcao] || 0
                         }))
@@ -296,7 +296,7 @@ export default function PautasPage() {
                       <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">Opções disponíveis:</p>
                       {(() => {
                         const placar = placares[pauta.aba]
-                        const opcoesComVotos = pauta.opcoes.map(opcao => ({
+                        const opcoesComVotos = pauta.opcoes.map((opcao: string) => ({
                           opcao,
                           votos: placar?.counts[opcao] || 0
                         }))
@@ -405,7 +405,7 @@ export default function PautasPage() {
                       <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">Opções disponíveis:</p>
                       {(() => {
                         const placar = placares[pauta.aba]
-                        const opcoesComVotos = pauta.opcoes.map(opcao => ({
+                        const opcoesComVotos = pauta.opcoes.map((opcao: string) => ({
                           opcao,
                           votos: placar?.counts[opcao] || 0
                         }))
