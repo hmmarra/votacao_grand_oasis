@@ -388,7 +388,7 @@ export function GerenciarMoradoresTab() {
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                         (morador as any).isMaster 
                           ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300'
-                          : morador.acesso === 'Administrador'
+                          : (morador as any).acesso === 'Administrador'
                           ? 'bg-violet-100 dark:bg-violet-900/30 text-violet-800 dark:text-violet-300'
                           : 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300'
                       }`}>
