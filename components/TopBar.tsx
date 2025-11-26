@@ -18,11 +18,11 @@ export function TopBar() {
           {/* Left side - Logo e Link para Pautas */}
           <div className="flex items-center gap-4">
             <Image
-              src="/img/logo_grand_oasis.webp"
+              src="/img/logo_circulo.png"
               alt="Grand Oasis Poá Logo"
               width={40}
               height={40}
-              className="h-10 w-auto object-contain"
+              className="h-10 w-10 object-contain rounded-full"
               priority
             />
             <button
