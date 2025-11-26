@@ -471,3 +471,24 @@ function VotacaoContent() {
   )
 }
 
+export default function VotacaoPage() {
+  return (
+    <ProtectedRoute>
+      <Suspense fallback={
+        <div className="min-h-screen bg-gradient-to-br from-violet-50 via-purple-50 to-indigo-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex flex-col">
+          <TopBar />
+          <div className="flex-1 flex items-center justify-center">
+            <div className="text-center">
+              <div className="inline-block animate-spin rounded-full h-16 w-16 border-4 border-indigo-600 border-t-transparent mb-6"></div>
+              <p className="text-lg text-gray-600 dark:text-gray-400">Carregando...</p>
+            </div>
+          </div>
+          <Footer />
+        </div>
+      }>
+        <VotacaoContent />
+      </Suspense>
+    </ProtectedRoute>
+  )
+}
+
