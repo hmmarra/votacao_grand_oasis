@@ -9,13 +9,22 @@ import {
   query, 
   where,
   Timestamp,
-  serverTimestamp
+  serverTimestamp,
+  type Firestore
 } from 'firebase/firestore'
 import { db } from './firebase'
 
 // Função auxiliar para normalizar CPF
 function normalizeCPF(value: string): string {
   return String(value || '').replace(/\D/g, '')
+}
+
+// Função auxiliar para verificar se db está inicializado
+function ensureDb(): Firestore {
+  if (!db) {
+    throw new Error('Firebase não inicializado. Verifique as variáveis de ambiente NEXT_PUBLIC_FIREBASE_*')
+  }
+  return db
 }
 
 export interface Pauta {
@@ -76,7 +85,8 @@ export interface Voto {
 export const firebaseApi = {
   // Pautas
   getPautas: async (): Promise<Pauta[]> => {
-    const pautasRef = collection(db, 'pautas')
+    const dbInstance = ensureDb()
+    const pautasRef = collection(dbInstance, 'pautas')
     const q = query(pautasRef, where('status', '==', 'Votação Liberada'))
     const snapshot = await getDocs(q)
     return snapshot.docs.map(doc => ({
@@ -86,7 +96,8 @@ export const firebaseApi = {
   },
 
   getAllPautas: async (): Promise<Pauta[]> => {
-    const pautasRef = collection(db, 'pautas')
+    const dbInstance = ensureDb()
+    const pautasRef = collection(dbInstance, 'pautas')
     const snapshot = await getDocs(pautasRef)
     return snapshot.docs.map(doc => ({
       id: doc.id,
@@ -95,7 +106,8 @@ export const firebaseApi = {
   },
 
   getPautaByAba: async (aba: string): Promise<Pauta> => {
-    const pautasRef = collection(db, 'pautas')
+    const dbInstance = ensureDb()
+    const pautasRef = collection(dbInstance, 'pautas')
     const q = query(pautasRef, where('aba', '==', aba))
     const snapshot = await getDocs(q)
     
@@ -110,7 +122,8 @@ export const firebaseApi = {
   },
 
   savePauta: async (pautaData: Partial<Pauta>): Promise<string> => {
-    const pautasRef = collection(db, 'pautas')
+    const dbInstance = ensureDb()
+    const pautasRef = collection(dbInstance, 'pautas')
     const docRef = await addDoc(pautasRef, {
       ...pautaData,
       createdAt: serverTimestamp(),
@@ -120,7 +133,8 @@ export const firebaseApi = {
   },
 
   updatePauta: async (id: string, pautaData: Partial<Pauta>): Promise<void> => {
-    const pautaRef = doc(db, 'pautas', id)
+    const dbInstance = ensureDb()
+    const pautaRef = doc(dbInstance, 'pautas', id)
     await updateDoc(pautaRef, {
       ...pautaData,
       updatedAt: serverTimestamp()
@@ -128,7 +142,8 @@ export const firebaseApi = {
   },
 
   deletePauta: async (id: string): Promise<void> => {
-    const pautaRef = doc(db, 'pautas', id)
+    const dbInstance = ensureDb()
+    const pautaRef = doc(dbInstance, 'pautas', id)
     await deleteDoc(pautaRef)
   },
 
@@ -146,7 +161,8 @@ export const firebaseApi = {
     const normalizedCPF = normalizeCPF(cpf)
     
     // Buscar na coleção administradores (que inclui moradores e administradores)
-    const administradoresRef = collection(db, 'administradores')
+    const dbInstance = ensureDb()
+    const administradoresRef = collection(dbInstance, 'administradores')
     const q = query(administradoresRef, where('cpf', '==', normalizedCPF))
     const snapshot = await getDocs(q)
     
@@ -157,7 +173,8 @@ export const firebaseApi = {
     const usuario = snapshot.docs[0].data()
     
     // Verificar se já votou
-    const votosRef = collection(db, 'votos')
+    const dbInstance = ensureDb()
+    const votosRef = collection(dbInstance, 'votos')
     const votoQuery = query(
       votosRef, 
       where('cpf', '==', normalizedCPF),
@@ -187,7 +204,8 @@ export const firebaseApi = {
     const normalizedCPF = normalizeCPF(cpf)
     
     // Buscar TODOS os registros com esse CPF na coleção administradores
-    const administradoresRef = collection(db, 'administradores')
+    const dbInstance = ensureDb()
+    const administradoresRef = collection(dbInstance, 'administradores')
     const q = query(administradoresRef, where('cpf', '==', normalizedCPF))
     const snapshot = await getDocs(q)
     
@@ -202,7 +220,8 @@ export const firebaseApi = {
     }
     
     // Verificar se já votou nesta pauta (buscar qualquer voto desse CPF)
-    const votosRef = collection(db, 'votos')
+    const dbInstance = ensureDb()
+    const votosRef = collection(dbInstance, 'votos')
     const votoQuery = query(
       votosRef,
       where('cpf', '==', normalizedCPF),
@@ -238,7 +257,8 @@ export const firebaseApi = {
   },
 
   getScores: async (tipo: string): Promise<Placar> => {
-    const votosRef = collection(db, 'votos')
+    const dbInstance = ensureDb()
+    const votosRef = collection(dbInstance, 'votos')
     
     // Buscar votos de duas formas:
     // 1. Votos corretos: tipoVotacao == tipo
@@ -303,7 +323,8 @@ export const firebaseApi = {
   },
 
   getAllVotesByAba: async (abaNome: string): Promise<Voto[]> => {
-    const votosRef = collection(db, 'votos')
+    const dbInstance = ensureDb()
+    const votosRef = collection(dbInstance, 'votos')
     const q = query(votosRef, where('tipoVotacao', '==', abaNome))
     const snapshot = await getDocs(q)
     
@@ -314,7 +335,8 @@ export const firebaseApi = {
   },
 
   clearVotesByAba: async (abaNome: string): Promise<void> => {
-    const votosRef = collection(db, 'votos')
+    const dbInstance = ensureDb()
+    const votosRef = collection(dbInstance, 'votos')
     const q = query(votosRef, where('tipoVotacao', '==', abaNome))
     const snapshot = await getDocs(q)
     
@@ -328,7 +350,8 @@ export const firebaseApi = {
     const normalizedInput = normalizeCPF(emailOrCpf)
     const isEmail = emailOrCpf.includes('@')
     
-    const administradoresRef = collection(db, 'administradores')
+    const dbInstance = ensureDb()
+    const administradoresRef = collection(dbInstance, 'administradores')
     
     let q
     if (isEmail) {
@@ -360,7 +383,8 @@ export const firebaseApi = {
 
   // Moradores - Buscar da coleção administradores com acesso "Morador" ou isMaster
   getAllMoradores: async (): Promise<Morador[]> => {
-    const administradoresRef = collection(db, 'administradores')
+    const dbInstance = ensureDb()
+    const administradoresRef = collection(dbInstance, 'administradores')
     
     // Buscar todos os registros (sem filtro) para incluir moradores e usuário mestre
     const snapshot = await getDocs(administradoresRef)
@@ -399,7 +423,8 @@ export const firebaseApi = {
       throw new Error('Apenas Administradores podem ser marcados como Mestre')
     }
     
-    const administradoresRef = collection(db, 'administradores')
+    const dbInstance = ensureDb()
+    const administradoresRef = collection(dbInstance, 'administradores')
     
     // Verificar se já existe por Apartamento + Torre (campos chave)
     const qByApt = query(
@@ -454,7 +479,8 @@ export const firebaseApi = {
       throw new Error('CPF e Nome são obrigatórios')
     }
     
-    const administradoresRef = collection(db, 'administradores')
+    const dbInstance = ensureDb()
+    const administradoresRef = collection(dbInstance, 'administradores')
     const docRef = doc(administradoresRef, id)
     const docSnap = await getDoc(docRef)
     
@@ -483,7 +509,8 @@ export const firebaseApi = {
   },
 
   deleteMorador: async (id: string): Promise<void> => {
-    const administradoresRef = collection(db, 'administradores')
+    const dbInstance = ensureDb()
+    const administradoresRef = collection(dbInstance, 'administradores')
     const docRef = doc(administradoresRef, id)
     const docSnap = await getDoc(docRef)
     
