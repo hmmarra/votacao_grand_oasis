@@ -304,16 +304,15 @@ export function GerenciarMoradoresTab() {
         </div>
       </div>
 
-        {message && (
-          <div className={`mb-4 p-3 rounded-lg ${
-            message.type === 'success' 
-              ? 'bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-200' 
-              : 'bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-200'
-          }`}>
-            <p className="text-sm whitespace-pre-line">{message.text}</p>
-          </div>
-        )}
-      </div>
+      {message && (
+        <div className={`mb-4 p-3 rounded-lg ${
+          message.type === 'success' 
+            ? 'bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-200' 
+            : 'bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-200'
+        }`}>
+          <p className="text-sm whitespace-pre-line">{message.text}</p>
+        </div>
+      )}
 
       {/* Busca e Controles */}
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-4 mb-6">
