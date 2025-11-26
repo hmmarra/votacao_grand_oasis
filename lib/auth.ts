@@ -26,6 +26,10 @@ export async function authenticateUser(emailOrCpf: string, senha: string): Promi
     const normalizedInput = normalizeCPF(emailOrCpf)
     const isEmail = emailOrCpf.includes('@')
     
+    if (!db) {
+      throw new Error('Firebase não inicializado')
+    }
+    
     const administradoresRef = collection(db, 'administradores')
     
     let q
