@@ -395,7 +395,7 @@ export const firebaseApi = {
       } as Morador))
       .filter(morador => {
         // Incluir se for morador OU se for usuário mestre
-        return morador.acesso === 'Morador' || morador.isMaster === true
+        return (morador as any).acesso === 'Morador' || (morador as any).isMaster === true
       })
   },
 
