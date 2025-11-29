@@ -187,12 +187,18 @@ export function GerenciarMoradoresTab() {
       const reader = new FileReader()
       reader.onload = async (event) => {
         try {
-          setUploadProgress(30) // Progresso após ler o arquivo
+          setUploadProgress(10) // Progresso após ler o arquivo
           
           const arrayBuffer = event.target?.result as ArrayBuffer
           const base64 = btoa(String.fromCharCode.apply(null, Array.from(new Uint8Array(arrayBuffer))))
           
-          setUploadProgress(50) // Progresso após converter para base64
+          setUploadProgress(20) // Progresso após converter para base64
+          
+          // Mostrar mensagem de processamento em lotes
+          setMessage({ 
+            text: 'Processando arquivo em lotes (aguarde, isso pode levar alguns minutos para arquivos grandes)...', 
+            type: 'success' 
+          })
           
           const result = await api.processExcelUpload(base64, file.name)
           
@@ -822,8 +828,8 @@ export function GerenciarMoradoresTab() {
                     className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-violet-600 file:text-white hover:file:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed"
                   />
                   {uploading && (
-                    <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                      Processando arquivo...
+                    <p className="mt-2 text-xs text-amber-600 dark:text-amber-400">
+                      ⏳ Processando arquivo em lotes (50 registros a cada 5 segundos). Isso pode levar alguns minutos para arquivos grandes. Por favor, aguarde...
                     </p>
                   )}
                 </div>

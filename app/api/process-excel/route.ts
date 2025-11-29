@@ -77,8 +77,9 @@ export async function POST(request: NextRequest) {
       }
     })
 
-    // Preparar operações em batch (máximo 500 por batch)
-    const BATCH_SIZE = 500
+    // Preparar operações em batch (50 por batch para processar a cada 5 segundos)
+    const BATCH_SIZE = 50
+    const BATCH_DELAY_MS = 5000 // 5 segundos entre batches
     const operations: Array<{ type: 'insert' | 'update'; data: any; docId?: string }> = []
 
     // Processar cada linha do Excel
@@ -145,10 +146,15 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Executar operações em batches
+    // Função auxiliar para aguardar
+    const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
+
+    // Executar operações em batches com delay de 5 segundos entre eles
+    const totalBatches = Math.ceil(operations.length / BATCH_SIZE)
     for (let i = 0; i < operations.length; i += BATCH_SIZE) {
       const batch = writeBatch(db)
       const batchOps = operations.slice(i, i + BATCH_SIZE)
+      const currentBatch = Math.floor(i / BATCH_SIZE) + 1
       
       for (const op of batchOps) {
         if (op.type === 'update' && op.docId) {
@@ -160,7 +166,13 @@ export async function POST(request: NextRequest) {
         }
       }
       
+      // Executar batch
       await batch.commit()
+      
+      // Aguardar 5 segundos antes do próximo batch (exceto no último)
+      if (i + BATCH_SIZE < operations.length) {
+        await sleep(BATCH_DELAY_MS)
+      }
     }
 
     return NextResponse.json({

@@ -9,3 +9,8 @@
 [[plugins]]
   package = "@netlify/plugin-nextjs"
 
+# Configuração de timeout para funções serverless (26 segundos - máximo no plano gratuito)
+[functions]
+  node_bundler = "esbuild"
+  included_files = ["**/*.ts", "**/*.tsx", "**/*.js", "**/*.jsx"]
+
