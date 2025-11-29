@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/firebase'
-import { collection, query, where, getDocs, addDoc, updateDoc, doc, serverTimestamp } from 'firebase/firestore'
+import { collection, getDocs, addDoc, updateDoc, doc, serverTimestamp, writeBatch } from 'firebase/firestore'
 import * as XLSX from 'xlsx'
+
+// Configurar timeout maior para esta rota (60 segundos)
+export const maxDuration = 60
 
 // Função auxiliar para normalizar CPF
 function normalizeCPF(value: string): string {
@@ -61,7 +64,24 @@ export async function POST(request: NextRequest) {
     const administradoresRef = collection(db, 'administradores')
     const uploadDate = serverTimestamp()
 
-    // Processar cada linha
+    // Buscar todos os moradores existentes de uma vez (otimização)
+    const allMoradoresSnapshot = await getDocs(administradoresRef)
+    
+    // Criar mapa em memória: chave = "apartamento_torre", valor = { docId, data }
+    const moradoresMap = new Map<string, { docId: string; data: any }>()
+    allMoradoresSnapshot.forEach((doc) => {
+      const data = doc.data()
+      const key = `${data.apartamento || ''}_${data.torre || ''}`
+      if (key && key !== '_') {
+        moradoresMap.set(key, { docId: doc.id, data })
+      }
+    })
+
+    // Preparar operações em batch (máximo 500 por batch)
+    const BATCH_SIZE = 500
+    const operations: Array<{ type: 'insert' | 'update'; data: any; docId?: string }> = []
+
+    // Processar cada linha do Excel
     for (const row of rows) {
       try {
         const cpf = normalizeCPF(String(row.CPF || ''))
@@ -77,55 +97,70 @@ export async function POST(request: NextRequest) {
 
         // Gerar senha: apartamento + torre
         const senha = `${apartamento}${torre}`
+        const key = `${apartamento}_${torre}`
 
-        // Buscar registro existente por Apartamento + Torre (campos chave)
-        const qByApt = query(
-          administradoresRef,
-          where('apartamento', '==', apartamento),
-          where('torre', '==', torre)
-        )
+        // Verificar se existe no mapa
+        const existing = moradoresMap.get(key)
 
-        const snapshotApt = await getDocs(qByApt)
-
-        // Se encontrou por Apartamento + Torre, atualizar
-        if (!snapshotApt.empty) {
-          const docRef = snapshotApt.docs[0]
-          const existingData = docRef.data()
-          
+        if (existing) {
           // Não atualizar se for usuário mestre
-          if (existingData.isMaster) {
+          if (existing.data.isMaster) {
             errors.push(`Usuário mestre ignorado: ${nome} (AP: ${apartamento}, Torre: ${torre})`)
             continue
           }
           
-          await updateDoc(docRef.ref, {
-            cpf,
-            nome,
-            senha,
-            data_cadastro: uploadDate,
-            acesso: existingData.acesso || 'Morador',
-            email: existingData.email || null
+          operations.push({
+            type: 'update',
+            docId: existing.docId,
+            data: {
+              cpf,
+              nome,
+              senha,
+              data_cadastro: uploadDate,
+              acesso: existing.data.acesso || 'Morador',
+              email: existing.data.email || null
+            }
           })
           updated++
-        }
-        // Se não encontrou, criar novo
-        else {
-          await addDoc(administradoresRef, {
-            cpf,
-            nome,
-            apartamento,
-            torre,
-            senha,
-            acesso: 'Morador',
-            email: null,
-            isMaster: false,
-            data_cadastro: uploadDate
+        } else {
+          // Criar novo
+          operations.push({
+            type: 'insert',
+            data: {
+              cpf,
+              nome,
+              apartamento,
+              torre,
+              senha,
+              acesso: 'Morador',
+              email: null,
+              isMaster: false,
+              data_cadastro: uploadDate
+            }
           })
           inserted++
         }
       } catch (error: any) {
         errors.push(`Erro ao processar linha: ${error.message}`)
       }
+    }
+
+    // Executar operações em batches
+    for (let i = 0; i < operations.length; i += BATCH_SIZE) {
+      const batch = writeBatch(db)
+      const batchOps = operations.slice(i, i + BATCH_SIZE)
+      
+      for (const op of batchOps) {
+        if (op.type === 'update' && op.docId) {
+          const docRef = doc(administradoresRef, op.docId)
+          batch.update(docRef, op.data)
+        } else if (op.type === 'insert') {
+          const docRef = doc(administradoresRef)
+          batch.set(docRef, op.data)
+        }
+      }
+      
+      await batch.commit()
     }
 
     return NextResponse.json({

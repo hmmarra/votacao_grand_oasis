@@ -25,7 +25,7 @@ export function GerenciarMoradoresTab() {
   const [searchTerm, setSearchTerm] = useState('')
   const [apartamentoFilter, setApartamentoFilter] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
-  const itemsPerPage = 25
+  const [itemsPerPage, setItemsPerPage] = useState(10)
   const [uploadProgress, setUploadProgress] = useState(0)
   const [editingMorador, setEditingMorador] = useState<Morador | null>(null)
   const [editFormData, setEditFormData] = useState({
@@ -90,6 +90,11 @@ export function GerenciarMoradoresTab() {
     setFilteredMoradores(filtered)
     setCurrentPage(1) // Resetar para primeira página ao filtrar
   }, [searchTerm, apartamentoFilter, moradores])
+
+  // Resetar para primeira página quando mudar itemsPerPage
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [itemsPerPage])
 
   // Calcular paginação
   const totalPages = Math.ceil(filteredMoradores.length / itemsPerPage)
@@ -340,6 +345,16 @@ export function GerenciarMoradoresTab() {
             Upload Planilha
           </button>
           <button
+            onClick={exportMoradoresToExcel}
+            disabled={filteredMoradores.length === 0}
+            className="inline-flex items-center justify-center gap-2 rounded-lg bg-green-600 text-white px-4 py-2.5 hover:bg-green-700 text-sm font-medium transition-colors h-10 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+              <path fillRule="evenodd" d="M12 2.25a.75.75 0 0 1 .75.75v11.69l3.22-3.22a.75.75 0 1 1 1.06 1.06l-4.5 4.5a.75.75 0 0 1-1.06 0l-4.5-4.5a.75.75 0 1 1 1.06-1.06l3.22 3.22V3a.75.75 0 0 1 .75-.75ZM6.75 15a.75.75 0 0 1 .75.75v2.25a3 3 0 0 0 3 3h2.25a3 3 0 0 0 3-3V15.75a.75.75 0 0 1 1.5 0v2.25A4.5 4.5 0 0 1 13.5 22.5h-2.25a4.5 4.5 0 0 1-4.5-4.5V15.75a.75.75 0 0 1 .75-.75Z" clipRule="evenodd"/>
+            </svg>
+            Exportar Excel
+          </button>
+          <button
             onClick={() => {
               setFormData({
                 cpf: '',
@@ -434,24 +449,12 @@ export function GerenciarMoradoresTab() {
               </div>
             </div>
           </div>
-          <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
-            <div className="text-sm text-gray-600 dark:text-gray-400">
-              {filteredMoradores.length === moradores.length ? (
-                <span>Total: <strong>{moradores.length}</strong> morador(es)</span>
-              ) : (
-                <span>Mostrando <strong>{filteredMoradores.length}</strong> de <strong>{moradores.length}</strong> morador(es)</span>
-              )}
-            </div>
-            <button
-              onClick={exportMoradoresToExcel}
-              disabled={filteredMoradores.length === 0}
-              className="inline-flex items-center justify-center gap-2 rounded-lg bg-green-600 text-white px-4 py-2.5 hover:bg-green-700 text-sm font-medium transition-colors h-10 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-                <path fillRule="evenodd" d="M12 2.25a.75.75 0 0 1 .75.75v11.69l3.22-3.22a.75.75 0 1 1 1.06 1.06l-4.5 4.5a.75.75 0 0 1-1.06 0l-4.5-4.5a.75.75 0 1 1 1.06-1.06l3.22 3.22V3a.75.75 0 0 1 .75-.75ZM6.75 15a.75.75 0 0 1 .75.75v2.25a3 3 0 0 0 3 3h2.25a3 3 0 0 0 3-3V15.75a.75.75 0 0 1 1.5 0v2.25A4.5 4.5 0 0 1 13.5 22.5h-2.25a4.5 4.5 0 0 1-4.5-4.5V15.75a.75.75 0 0 1 .75-.75Z" clipRule="evenodd"/>
-              </svg>
-              Exportar Excel
-            </button>
+          <div className="text-sm text-gray-600 dark:text-gray-400">
+            {filteredMoradores.length === moradores.length ? (
+              <span>Total: <strong>{moradores.length}</strong> morador(es)</span>
+            ) : (
+              <span>Mostrando <strong>{filteredMoradores.length}</strong> de <strong>{moradores.length}</strong> morador(es)</span>
+            )}
           </div>
         </div>
       </div>
@@ -536,68 +539,89 @@ export function GerenciarMoradoresTab() {
         </div>
 
         {/* Paginação */}
-        {totalPages > 1 && (
+        {(totalPages > 1 || filteredMoradores.length > 0) && (
           <div className="border-t border-gray-200 dark:border-gray-700 px-4 sm:px-6 py-4">
             <div className="flex flex-col items-center gap-4">
-              <div className="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
-                Mostrando <strong>{startIndex + 1}</strong> a <strong>{Math.min(endIndex, filteredMoradores.length)}</strong> de <strong>{filteredMoradores.length}</strong> resultado(s)
+              <div className="flex flex-col sm:flex-row items-center gap-4 w-full justify-between">
+                <div className="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                  Mostrando <strong>{startIndex + 1}</strong> a <strong>{Math.min(endIndex, filteredMoradores.length)}</strong> de <strong>{filteredMoradores.length}</strong> resultado(s)
+                </div>
+                
+                {/* Seletor de itens por página */}
+                <div className="flex items-center gap-2">
+                  <label className="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                    Itens por página:
+                  </label>
+                  <select
+                    value={itemsPerPage}
+                    onChange={(e) => setItemsPerPage(Number(e.target.value))}
+                    className="rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-violet-500 focus:ring-violet-500 h-9 text-sm px-3"
+                  >
+                    <option value={10}>10</option>
+                    <option value={25}>25</option>
+                    <option value={50}>50</option>
+                    <option value={100}>100</option>
+                  </select>
+                </div>
               </div>
               
-              <div className="flex flex-col items-center gap-3 w-full">
-                {/* Números das páginas */}
-                <div className="flex items-center gap-1.5 sm:gap-2 justify-center flex-wrap">
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => {
-                    // Mostrar apenas algumas páginas ao redor da atual
-                    if (
-                      page === 1 ||
-                      page === totalPages ||
-                      (page >= currentPage - 1 && page <= currentPage + 1)
-                    ) {
-                      return (
-                        <button
-                          key={page}
-                          onClick={() => setCurrentPage(page)}
-                          className={`min-w-[2.5rem] px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                            currentPage === page
-                              ? 'bg-violet-600 text-white'
-                              : 'border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
-                          }`}
-                        >
-                          {page}
-                        </button>
-                      )
-                    } else if (page === currentPage - 2 || page === currentPage + 2) {
-                      return <span key={page} className="px-2 text-gray-400">...</span>
-                    }
-                    return null
-                  })}
-                </div>
+              {totalPages > 1 && (
+                <div className="flex flex-col items-center gap-3 w-full">
+                  {/* Números das páginas */}
+                  <div className="flex items-center gap-1.5 sm:gap-2 justify-center flex-wrap">
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => {
+                      // Mostrar apenas algumas páginas ao redor da atual
+                      if (
+                        page === 1 ||
+                        page === totalPages ||
+                        (page >= currentPage - 1 && page <= currentPage + 1)
+                      ) {
+                        return (
+                          <button
+                            key={page}
+                            onClick={() => setCurrentPage(page)}
+                            className={`min-w-[2.5rem] px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                              currentPage === page
+                                ? 'bg-violet-600 text-white'
+                                : 'border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+                            }`}
+                          >
+                            {page}
+                          </button>
+                        )
+                      } else if (page === currentPage - 2 || page === currentPage + 2) {
+                        return <span key={page} className="px-2 text-gray-400">...</span>
+                      }
+                      return null
+                    })}
+                  </div>
 
-                {/* Botões de navegação */}
-                <div className="flex items-center gap-3 justify-center">
-                  <button
-                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                    disabled={currentPage === 1}
-                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition-colors"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-                      <path fillRule="evenodd" d="M11.03 3.97a.75.75 0 0 1 0 1.06l-6.22 6.22H21a.75.75 0 0 1 0 1.5H4.81l6.22 6.22a.75.75 0 1 1-1.06 1.06l-7.5-7.5a.75.75 0 0 1 0-1.06l7.5-7.5a.75.75 0 0 1 1.06 0Z" clipRule="evenodd"/>
-                    </svg>
-                    <span>Anterior</span>
-                  </button>
+                  {/* Botões de navegação */}
+                  <div className="flex items-center gap-3 justify-center">
+                    <button
+                      onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                      disabled={currentPage === 1}
+                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition-colors"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                        <path fillRule="evenodd" d="M11.03 3.97a.75.75 0 0 1 0 1.06l-6.22 6.22H21a.75.75 0 0 1 0 1.5H4.81l6.22 6.22a.75.75 0 1 1-1.06 1.06l-7.5-7.5a.75.75 0 0 1 0-1.06l7.5-7.5a.75.75 0 0 1 1.06 0Z" clipRule="evenodd"/>
+                      </svg>
+                      <span>Anterior</span>
+                    </button>
 
-                  <button
-                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                    disabled={currentPage === totalPages}
-                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition-colors"
-                  >
-                    <span>Próxima</span>
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-                      <path fillRule="evenodd" d="M12.97 3.97a.75.75 0 0 1 1.06 0l7.5 7.5a.75.75 0 0 1 0 1.06l-7.5 7.5a.75.75 0 1 1-1.06-1.06l6.22-6.22H3a.75.75 0 0 1 0-1.5h16.19l-6.22-6.22a.75.75 0 0 1 0-1.06Z" clipRule="evenodd"/>
-                    </svg>
-                  </button>
+                    <button
+                      onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                      disabled={currentPage === totalPages}
+                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition-colors"
+                    >
+                      <span>Próxima</span>
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                        <path fillRule="evenodd" d="M12.97 3.97a.75.75 0 0 1 1.06 0l7.5 7.5a.75.75 0 0 1 0 1.06l-7.5 7.5a.75.75 0 1 1-1.06-1.06l6.22-6.22H3a.75.75 0 0 1 0-1.5h16.19l-6.22-6.22a.75.75 0 0 1 0-1.06Z" clipRule="evenodd"/>
+                      </svg>
+                    </button>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
         )}
