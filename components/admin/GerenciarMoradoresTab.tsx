@@ -194,35 +194,69 @@ export function GerenciarMoradoresTab() {
           
           setUploadProgress(20) // Progresso após converter para base64
           
+          // Parse do Excel no frontend para contar linhas e estimar progresso
+          const workbook = XLSX.read(arrayBuffer, { type: 'array' })
+          const sheetName = workbook.SheetNames[0]
+          const worksheet = workbook.Sheets[sheetName]
+          const rows = XLSX.utils.sheet_to_json(worksheet)
+          const totalRows = rows.length
+          
+          // Calcular tempo estimado: 50 registros por lote, 5 segundos por lote
+          const BATCH_SIZE = 50
+          const BATCH_DELAY_MS = 5000
+          const estimatedBatches = Math.ceil(totalRows / BATCH_SIZE)
+          const estimatedTimeMs = estimatedBatches * BATCH_DELAY_MS
+          
           // Mostrar mensagem de processamento em lotes
           setMessage({ 
-            text: 'Processando arquivo em lotes (aguarde, isso pode levar alguns minutos para arquivos grandes)...', 
+            text: `Processando ${totalRows} registros em lotes (50 registros a cada 5 segundos). Tempo estimado: ~${Math.ceil(estimatedTimeMs / 1000)} segundos...`, 
             type: 'success' 
           })
           
-          const result = await api.processExcelUpload(base64, file.name)
+          // Simular progresso gradualmente enquanto processa
+          const progressInterval = setInterval(() => {
+            setUploadProgress(prev => {
+              // Aumentar progresso gradualmente até 90%
+              // 20% inicial + até 70% durante processamento = 90% máximo
+              if (prev < 90) {
+                // Calcular incremento baseado no tempo estimado
+                const increment = 70 / (estimatedTimeMs / 1000) // 70% dividido pelo tempo em segundos
+                return Math.min(90, prev + increment)
+              }
+              return prev
+            })
+          }, 1000) // Atualizar a cada segundo
           
-          setUploadProgress(100) // Progresso completo
-          
-          let messageText = `Upload realizado com sucesso! ${result.inserted} registros inseridos, ${result.updated} registros atualizados.`
-          if (result.errors && result.errors.length > 0) {
-            messageText += `\n\nAvisos: ${result.errors.length} linha(s) com problemas.`
-          }
-          setMessage({
-            text: messageText,
-            type: 'success'
-          })
-          
-          // Aguardar um pouco para mostrar 100% antes de resetar e fechar modal
-          setTimeout(() => {
-            setUploadProgress(0)
-            setFileInputKey(prev => prev + 1) // Resetar input de arquivo
-            loadMoradores()
-            // Fechar modal após 2 segundos se sucesso
+          try {
+            const result = await api.processExcelUpload(base64, file.name)
+            
+            // Limpar intervalo e ir para 100%
+            clearInterval(progressInterval)
+            setUploadProgress(100) // Progresso completo
+            
+            let messageText = `Upload realizado com sucesso! ${result.inserted} registros inseridos, ${result.updated} registros atualizados.`
+            if (result.errors && result.errors.length > 0) {
+              messageText += `\n\nAvisos: ${result.errors.length} linha(s) com problemas.`
+            }
+            setMessage({
+              text: messageText,
+              type: 'success'
+            })
+            
+            // Aguardar um pouco para mostrar 100% antes de resetar e fechar modal
             setTimeout(() => {
-              setShowUploadModal(false)
-            }, 2000)
-          }, 500)
+              setUploadProgress(0)
+              setFileInputKey(prev => prev + 1) // Resetar input de arquivo
+              loadMoradores()
+              // Fechar modal após 2 segundos se sucesso
+              setTimeout(() => {
+                setShowUploadModal(false)
+              }, 2000)
+            }, 500)
+          } catch (err: any) {
+            clearInterval(progressInterval)
+            throw err
+          }
         } catch (err: any) {
           setMessage({ text: 'Erro ao processar arquivo: ' + err.message, type: 'error' })
           setUploadProgress(0)
