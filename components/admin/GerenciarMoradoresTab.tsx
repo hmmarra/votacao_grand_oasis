@@ -872,7 +872,7 @@ export function GerenciarMoradoresTab() {
                   <div>
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-sm text-gray-700 dark:text-gray-300">Progresso do upload</span>
-                      <span className="text-sm font-medium text-violet-600 dark:text-violet-400">{uploadProgress}%</span>
+                      <span className="text-sm font-medium text-violet-600 dark:text-violet-400">{Math.round(uploadProgress)}%</span>
                     </div>
                     <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
                       <div
