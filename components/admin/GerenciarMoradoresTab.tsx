@@ -23,8 +23,9 @@ export function GerenciarMoradoresTab() {
   })
   const [saving, setSaving] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
+  const [apartamentoFilter, setApartamentoFilter] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
-  const itemsPerPage = 10
+  const itemsPerPage = 25
   const [uploadProgress, setUploadProgress] = useState(0)
   const [editingMorador, setEditingMorador] = useState<Morador | null>(null)
   const [editFormData, setEditFormData] = useState({
@@ -57,30 +58,38 @@ export function GerenciarMoradoresTab() {
     }
   }
 
-  // Filtrar moradores baseado no termo de busca
+  // Filtrar moradores baseado no termo de busca e filtro de apartamento
   useEffect(() => {
-    if (!searchTerm.trim()) {
-      setFilteredMoradores(moradores)
-      setCurrentPage(1)
-      return
+    let filtered = moradores
+
+    // Aplicar filtro de apartamento
+    if (apartamentoFilter.trim()) {
+      const apartamentoTerm = apartamentoFilter.toLowerCase().trim()
+      filtered = filtered.filter(morador => {
+        const apartamento = (morador.apartamento || '').toLowerCase()
+        return apartamento.includes(apartamentoTerm)
+      })
     }
 
-    const term = searchTerm.toLowerCase().trim()
-    const filtered = moradores.filter(morador => {
-      const nome = (morador.nome || '').toLowerCase()
-      const cpf = (morador.cpf || '').toLowerCase()
-      const apartamento = (morador.apartamento || '').toLowerCase()
-      const torre = (morador.torre || '').toLowerCase()
-      
-      return nome.includes(term) || 
-             cpf.includes(term) || 
-             apartamento.includes(term) || 
-             torre.includes(term)
-    })
+    // Aplicar busca geral
+    if (searchTerm.trim()) {
+      const term = searchTerm.toLowerCase().trim()
+      filtered = filtered.filter(morador => {
+        const nome = (morador.nome || '').toLowerCase()
+        const cpf = (morador.cpf || '').toLowerCase()
+        const apartamento = (morador.apartamento || '').toLowerCase()
+        const torre = (morador.torre || '').toLowerCase()
+        
+        return nome.includes(term) || 
+               cpf.includes(term) || 
+               apartamento.includes(term) || 
+               torre.includes(term)
+      })
+    }
     
     setFilteredMoradores(filtered)
     setCurrentPage(1) // Resetar para primeira página ao filtrar
-  }, [searchTerm, moradores])
+  }, [searchTerm, apartamentoFilter, moradores])
 
   // Calcular paginação
   const totalPages = Math.ceil(filteredMoradores.length / itemsPerPage)
@@ -113,6 +122,52 @@ export function GerenciarMoradoresTab() {
 
     // Gerar arquivo e fazer download
     XLSX.writeFile(wb, 'modelo_moradores.xlsx')
+  }
+
+  const exportMoradoresToExcel = () => {
+    try {
+      // Preparar dados para exportação
+      const dadosExportacao = filteredMoradores.map(morador => ({
+        CPF: morador.cpf || '',
+        Nome: morador.nome || '',
+        Apartamento: morador.apartamento || '',
+        Torre: morador.torre || '',
+        Acesso: (morador as any).acesso || 'Morador',
+        'Usuário Mestre': (morador as any).isMaster ? 'Sim' : 'Não',
+        Email: (morador as any).email || ''
+      }))
+
+      // Criar workbook e worksheet
+      const ws = XLSX.utils.json_to_sheet(dadosExportacao)
+      const wb = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(wb, ws, 'Moradores')
+
+      // Ajustar largura das colunas
+      const colWidths = [
+        { wch: 15 }, // CPF
+        { wch: 35 }, // Nome
+        { wch: 15 }, // Apartamento
+        { wch: 10 }, // Torre
+        { wch: 15 }, // Acesso
+        { wch: 15 }, // Usuário Mestre
+        { wch: 30 }  // Email
+      ]
+      ws['!cols'] = colWidths
+
+      // Gerar nome do arquivo com data
+      const dataAtual = new Date().toISOString().split('T')[0]
+      const fileName = `Relatorio_Moradores_${dataAtual}.xlsx`
+
+      // Gerar arquivo e fazer download
+      XLSX.writeFile(wb, fileName)
+      
+      setMessage({ 
+        text: `Relatório exportado com sucesso! ${filteredMoradores.length} registro(s) exportado(s).`, 
+        type: 'success' 
+      })
+    } catch (err: any) {
+      setMessage({ text: 'Erro ao exportar relatório: ' + err.message, type: 'error' })
+    }
   }
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -320,45 +375,83 @@ export function GerenciarMoradoresTab() {
 
       {/* Busca e Controles */}
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-4 mb-6">
-        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-          <div className="flex-1 w-full sm:max-w-md">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Buscar Morador
-            </label>
-            <div className="relative">
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Buscar por nome, CPF, apartamento ou torre..."
-                className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-violet-500 focus:ring-violet-500 h-11 text-base px-4 pl-10"
-              />
-              <svg 
-                xmlns="http://www.w3.org/2000/svg" 
-                className="h-5 w-5 absolute left-3 top-3 text-gray-400" 
-                viewBox="0 0 24 24" 
-                fill="currentColor"
-              >
-                <path fillRule="evenodd" d="M10.5 3.75a6.75 6.75 0 1 0 0 13.5 6.75 6.75 0 0 0 0-13.5ZM2.25 10.5a8.25 8.25 0 1 1 14.59 5.28l4.69 4.69a.75.75 0 1 1-1.06 1.06l-4.69-4.69A8.25 8.25 0 0 1 2.25 10.5Z" clipRule="evenodd"/>
-              </svg>
-              {searchTerm && (
-                <button
-                  onClick={() => setSearchTerm('')}
-                  className="absolute right-3 top-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+            <div className="flex-1 w-full sm:max-w-md">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Buscar Morador
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Buscar por nome, CPF, apartamento ou torre..."
+                  className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-violet-500 focus:ring-violet-500 h-11 text-base px-4 pl-10"
+                />
+                <svg 
+                  xmlns="http://www.w3.org/2000/svg" 
+                  className="h-5 w-5 absolute left-3 top-3 text-gray-400" 
+                  viewBox="0 0 24 24" 
+                  fill="currentColor"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
-                    <path fillRule="evenodd" d="M5.47 5.47a.75.75 0 0 1 1.06 0L12 10.94l5.47-5.47a.75.75 0 1 1 1.06 1.06L13.06 12l5.47 5.47a.75.75 0 1 1-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 0 1-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 0 1 0-1.06Z" clipRule="evenodd"/>
-                  </svg>
-                </button>
-              )}
+                  <path fillRule="evenodd" d="M10.5 3.75a6.75 6.75 0 1 0 0 13.5 6.75 6.75 0 0 0 0-13.5ZM2.25 10.5a8.25 8.25 0 1 1 14.59 5.28l4.69 4.69a.75.75 0 1 1-1.06 1.06l-4.69-4.69A8.25 8.25 0 0 1 2.25 10.5Z" clipRule="evenodd"/>
+                </svg>
+                {searchTerm && (
+                  <button
+                    onClick={() => setSearchTerm('')}
+                    className="absolute right-3 top-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+                      <path fillRule="evenodd" d="M5.47 5.47a.75.75 0 0 1 1.06 0L12 10.94l5.47-5.47a.75.75 0 1 1 1.06 1.06L13.06 12l5.47 5.47a.75.75 0 1 1-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 0 1-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 0 1 0-1.06Z" clipRule="evenodd"/>
+                    </svg>
+                  </button>
+                )}
+              </div>
+            </div>
+            <div className="w-full sm:w-auto sm:min-w-[200px]">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Filtrar por Apartamento
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  value={apartamentoFilter}
+                  onChange={(e) => setApartamentoFilter(e.target.value)}
+                  placeholder="Ex: 101, 202..."
+                  className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-violet-500 focus:ring-violet-500 h-11 text-base px-4"
+                />
+                {apartamentoFilter && (
+                  <button
+                    onClick={() => setApartamentoFilter('')}
+                    className="absolute right-3 top-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+                      <path fillRule="evenodd" d="M5.47 5.47a.75.75 0 0 1 1.06 0L12 10.94l5.47-5.47a.75.75 0 1 1 1.06 1.06L13.06 12l5.47 5.47a.75.75 0 1 1-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 0 1-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 0 1 0-1.06Z" clipRule="evenodd"/>
+                    </svg>
+                  </button>
+                )}
+              </div>
             </div>
           </div>
-          <div className="text-sm text-gray-600 dark:text-gray-400">
-            {filteredMoradores.length === moradores.length ? (
-              <span>Total: <strong>{moradores.length}</strong> morador(es)</span>
-            ) : (
-              <span>Mostrando <strong>{filteredMoradores.length}</strong> de <strong>{moradores.length}</strong> morador(es)</span>
-            )}
+          <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
+            <div className="text-sm text-gray-600 dark:text-gray-400">
+              {filteredMoradores.length === moradores.length ? (
+                <span>Total: <strong>{moradores.length}</strong> morador(es)</span>
+              ) : (
+                <span>Mostrando <strong>{filteredMoradores.length}</strong> de <strong>{moradores.length}</strong> morador(es)</span>
+              )}
+            </div>
+            <button
+              onClick={exportMoradoresToExcel}
+              disabled={filteredMoradores.length === 0}
+              className="inline-flex items-center justify-center gap-2 rounded-lg bg-green-600 text-white px-4 py-2.5 hover:bg-green-700 text-sm font-medium transition-colors h-10 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                <path fillRule="evenodd" d="M12 2.25a.75.75 0 0 1 .75.75v11.69l3.22-3.22a.75.75 0 1 1 1.06 1.06l-4.5 4.5a.75.75 0 0 1-1.06 0l-4.5-4.5a.75.75 0 1 1 1.06-1.06l3.22 3.22V3a.75.75 0 0 1 .75-.75ZM6.75 15a.75.75 0 0 1 .75.75v2.25a3 3 0 0 0 3 3h2.25a3 3 0 0 0 3-3V15.75a.75.75 0 0 1 1.5 0v2.25A4.5 4.5 0 0 1 13.5 22.5h-2.25a4.5 4.5 0 0 1-4.5-4.5V15.75a.75.75 0 0 1 .75-.75Z" clipRule="evenodd"/>
+              </svg>
+              Exportar Excel
+            </button>
           </div>
         </div>
       </div>
