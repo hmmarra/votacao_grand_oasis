@@ -13,6 +13,7 @@ if (!admin.apps.length) {
             credential = admin.credential.cert(JSON.parse(fileContent))
             console.log('[Firebase Admin] Credenciais carregadas do arquivo JSON local.')
         }
+        // console.log("Simulando ambiente sem JSON local...")
     } catch (e) {
         console.log('[Firebase Admin] Erro ao ler JSON local:', e)
     }
@@ -63,5 +64,17 @@ if (!admin.apps.length) {
     }
 }
 
-export const adminDb = admin.firestore()
-export const adminMessaging = admin.messaging()
+// Exportar proxies seguros para evitar crash no build se a inicialização falhar
+export const adminDb = new Proxy({}, {
+    get: (_target, prop) => {
+        if (!admin.apps.length) throw new Error('Firebase Admin DB não inicializado (credenciais inválidas)')
+        return (admin.firestore() as any)[prop]
+    }
+}) as admin.firestore.Firestore
+
+export const adminMessaging = new Proxy({}, {
+    get: (_target, prop) => {
+        if (!admin.apps.length) throw new Error('Firebase Admin Messaging não inicializado (credenciais inválidas)')
+        return (admin.messaging() as any)[prop]
+    }
+}) as admin.messaging.Messaging
