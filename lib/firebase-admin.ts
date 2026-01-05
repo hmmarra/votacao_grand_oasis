@@ -27,14 +27,24 @@ if (!admin.apps.length) {
             if (privateKey.startsWith('"') && privateKey.endsWith('"')) {
                 privateKey = privateKey.slice(1, -1)
             }
-            privateKey = privateKey.replace(/\\n/g, '\n')
+            // Tenta substituir literais \n por quebras de linha reais
+            const formattedKey = privateKey.replace(/\\n/g, '\n')
+
+            console.log(`[Firebase Admin] Tentando inicializar com variáveis de ambiente (Project: ${projectId}, Key Length: ${formattedKey.length})`)
 
             if (projectId && clientEmail) {
-                credential = admin.credential.cert({
-                    projectId,
-                    clientEmail,
-                    privateKey
-                })
+                try {
+                    credential = admin.credential.cert({
+                        projectId,
+                        clientEmail,
+                        privateKey: formattedKey
+                    })
+                } catch (certError: any) {
+                    console.error('[Firebase Admin] Erro ao criar credencial a partir das env vars:', certError.message)
+                    // Log parcial para debug (seguro)
+                    console.error('[Firebase Admin] Key Start:', formattedKey.substring(0, 30) + '...')
+                    console.error('[Firebase Admin] Key End:', '...' + formattedKey.substring(formattedKey.length - 30))
+                }
             }
         }
     }
