@@ -24,8 +24,8 @@ export const api = apiModule
 
 // Exportar tipos - usar uma abordagem que funciona em tempo de compilação
 // Como os tipos são compatíveis entre Firebase e Sheets, podemos usar qualquer um
-import type { Pauta, VotingConfig, VoterStatus, Placar, AdminData, Morador } from './firebase-api'
+import type { Pauta, VotingConfig, VoterStatus, Placar, AdminData, Morador, Reforma } from './firebase-api'
 
 // Re-exportar os tipos (Firebase tem mais campos, então é mais completo)
-export type { Pauta, VotingConfig, VoterStatus, Placar, AdminData, Morador }
+export type { Pauta, VotingConfig, VoterStatus, Placar, AdminData, Morador, Reforma }
 

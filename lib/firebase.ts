@@ -28,6 +28,12 @@ let app: FirebaseApp | null = null
 let db: Firestore | null = null
 let auth: Auth | null = null
 
+
+// Importar Messaging apenas no client-side
+import { getMessaging, Messaging } from 'firebase/messaging'
+
+let messaging: Messaging | null = null
+
 if (isConfigValid()) {
   try {
     // Evitar múltiplas inicializações
@@ -38,6 +44,16 @@ if (isConfigValid()) {
     }
     db = getFirestore(app)
     auth = getAuth(app)
+
+    // Inicializar Messaging apenas no browser
+    if (typeof window !== 'undefined') {
+      try {
+        messaging = getMessaging(app)
+      } catch (e) {
+        console.warn('Firebase Messaging não suportado neste navegador', e)
+      }
+    }
+
   } catch (error) {
     console.error('Erro ao inicializar Firebase:', error)
   }
@@ -45,6 +61,10 @@ if (isConfigValid()) {
   console.warn('⚠️ Firebase não configurado. Verifique as variáveis de ambiente NEXT_PUBLIC_FIREBASE_*')
 }
 
-export { db, auth }
+// Forçar tipagem para evitar erros de "null" no TypeScript, assumindo que a config existe
+const firestoreDb = db as Firestore;
+const firestoreAuth = auth as Auth;
+
+export { firestoreDb as db, firestoreAuth as auth, messaging }
 export default app
 

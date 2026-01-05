@@ -19,7 +19,7 @@ export function TopBar() {
           <div className="flex items-center gap-4">
             <Image
               src="/img/logo_circulo.png"
-              alt="Grand Oasis Poá Logo"
+              alt="Meu Condomínio Logo"
               width={40}
               height={40}
               className="h-10 w-10 object-contain rounded-full"

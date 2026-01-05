@@ -1,15 +1,18 @@
-import { 
-  collection, 
-  doc, 
+import {
+  collection,
+  doc,
   getDoc,
-  getDocs, 
-  addDoc, 
-  updateDoc, 
-  deleteDoc, 
-  query, 
+  getDocs,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  query,
   where,
   Timestamp,
   serverTimestamp,
+  onSnapshot,
+  arrayUnion,
+  arrayRemove,
   type Firestore
 } from 'firebase/firestore'
 import { db } from './firebase'
@@ -69,6 +72,9 @@ export interface Morador {
   nome: string
   apartamento: string
   torre: string
+  acesso?: 'Administrador' | 'Morador'
+  email?: string | null
+  isMaster?: boolean
 }
 
 export interface Voto {
@@ -80,6 +86,45 @@ export interface Voto {
   voto: string
   tipoVotacao: string
   timestamp: any
+}
+
+
+export interface Reforma {
+  id?: string
+  moradorId: string
+  moradorCpf?: string // Adicionado campo de CPF do morador
+  moradorNome: string
+  apartamento: string
+  torre: string
+  email: string
+  telefone?: string
+  tipoObra: string
+  servicos: string[]
+  dataInicio: string
+  dataFim: string
+  artRrt?: string
+  empresa?: string
+  cnpjPrestador?: string
+  funcionarios?: { nome: string; rg: string }[]
+  status: 'Em Análise' | 'Aprovado' | 'Reprovado' | 'Em Andamento' | 'Concluído' | 'Aguardando Vistoria' | 'Vistoria Aprovada' | 'Vistoria Reprovada'
+  observacoes?: string
+  anexos?: string[] // URLs ou nomes de arquivos
+  vistorias?: {
+    data: string
+    status: 'Aprovado' | 'Reprovado' | 'Pendente'
+    observacoes: string
+    anexos?: string[]
+  }[]
+  mensagens?: {
+    id: string
+    data: string
+    autor: string
+    texto: string
+    isAdmin: boolean
+  }[]
+  usersTyping?: string[]
+  createdAt?: any
+  updatedAt?: any
 }
 
 export const firebaseApi = {
@@ -110,11 +155,11 @@ export const firebaseApi = {
     const pautasRef = collection(dbInstance, 'pautas')
     const q = query(pautasRef, where('aba', '==', aba))
     const snapshot = await getDocs(q)
-    
+
     if (snapshot.empty) {
       throw new Error('Pauta não encontrada')
     }
-    
+
     return {
       id: snapshot.docs[0].id,
       ...snapshot.docs[0].data()
@@ -159,36 +204,36 @@ export const firebaseApi = {
 
   getVoterStatus: async (cpf: string, tipo: string): Promise<VoterStatus> => {
     const normalizedCPF = normalizeCPF(cpf)
-    
+
     // Buscar na coleção administradores (que inclui moradores e administradores)
     const dbInstance = ensureDb()
     const administradoresRef = collection(dbInstance, 'administradores')
     const q = query(administradoresRef, where('cpf', '==', normalizedCPF))
     const snapshot = await getDocs(q)
-    
+
     if (snapshot.empty) {
       throw new Error('CPF não encontrado na lista de moradores')
     }
-    
+
     const usuario = snapshot.docs[0].data()
-    
+
     // Verificar se já votou
     const votosRef = collection(dbInstance, 'votos')
     const votoQuery = query(
-      votosRef, 
+      votosRef,
       where('cpf', '==', normalizedCPF),
       where('tipoVotacao', '==', tipo)
     )
     const votoSnapshot = await getDocs(votoQuery)
-    
+
     let votou = false
     let voto: string | null = null
-    
+
     if (!votoSnapshot.empty) {
       votou = true
       voto = votoSnapshot.docs[0].data().voto
     }
-    
+
     return {
       cpf: usuario.cpf,
       nome: usuario.nome,
@@ -201,13 +246,13 @@ export const firebaseApi = {
 
   saveVote: async (cpf: string, voto: string, tipo: string): Promise<void> => {
     const normalizedCPF = normalizeCPF(cpf)
-    
+
     // Buscar TODOS os registros com esse CPF na coleção administradores
     const dbInstance = ensureDb()
     const administradoresRef = collection(dbInstance, 'administradores')
     const q = query(administradoresRef, where('cpf', '==', normalizedCPF))
     const snapshot = await getDocs(q)
-    
+
     if (snapshot.empty) {
       throw new Error('CPF não encontrado')
     }
@@ -217,7 +262,7 @@ export const firebaseApi = {
     if (isMaster) {
       throw new Error('Usuários mestres não podem votar')
     }
-    
+
     // Verificar se já votou nesta pauta (buscar qualquer voto desse CPF)
     const votosRef = collection(dbInstance, 'votos')
     const votoQuery = query(
@@ -226,10 +271,10 @@ export const firebaseApi = {
       where('tipoVotacao', '==', tipo)
     )
     const votoSnapshot = await getDocs(votoQuery)
-    
+
     if (!votoSnapshot.empty) {
       // Se já votou, atualizar TODOS os votos existentes desse CPF (editar)
-      const updatePromises = votoSnapshot.docs.map(votoDoc => 
+      const updatePromises = votoSnapshot.docs.map(votoDoc =>
         updateDoc(doc(votosRef, votoDoc.id), {
           voto,
           timestamp: serverTimestamp()
@@ -257,54 +302,54 @@ export const firebaseApi = {
   getScores: async (tipo: string): Promise<Placar> => {
     const dbInstance = ensureDb()
     const votosRef = collection(dbInstance, 'votos')
-    
+
     // Buscar votos de duas formas:
     // 1. Votos corretos: tipoVotacao == tipo
     // 2. Votos antigos com campos invertidos: voto == tipo (onde voto contém o tipo da pauta)
     const q1 = query(votosRef, where('tipoVotacao', '==', tipo))
     const q2 = query(votosRef, where('voto', '==', tipo))
-    
+
     const [snapshot1, snapshot2] = await Promise.all([
       getDocs(q1),
       getDocs(q2)
     ])
-    
+
     const counts: Record<string, number> = {}
     let total = 0
     const processedIds = new Set<string>()
-    
+
     // Processar votos corretos (tipoVotacao == tipo, voto == candidato)
     snapshot1.docs.forEach((doc) => {
       if (processedIds.has(doc.id)) return
       processedIds.add(doc.id)
-      
+
       const data = doc.data()
       const voto = data.voto
       const tipoVotacao = data.tipoVotacao
-      
+
       if (voto && tipoVotacao === tipo) {
         counts[voto] = (counts[voto] || 0) + 1
         total++
       }
     })
-    
+
     // Processar votos antigos com campos invertidos (voto == tipo, tipoVotacao == candidato)
     snapshot2.docs.forEach((docSnapshot) => {
       if (processedIds.has(docSnapshot.id)) return
       processedIds.add(docSnapshot.id)
-      
+
       const data = docSnapshot.data()
       const voto = data.voto // Contém o tipo (campos invertidos)
       const tipoVotacao = data.tipoVotacao // Contém o candidato (campos invertidos)
-      
+
       // Se voto == tipo, significa que os campos estão invertidos
       if (voto === tipo && tipoVotacao) {
         const candidato = tipoVotacao // O candidato está em tipoVotacao
-        
+
         // Contar o voto (candidato está em tipoVotacao)
         counts[candidato] = (counts[candidato] || 0) + 1
         total++
-        
+
         // Corrigir o documento automaticamente (fazer de forma assíncrona sem bloquear)
         const docRef = doc(votosRef, docSnapshot.id)
         updateDoc(docRef, {
@@ -316,7 +361,7 @@ export const firebaseApi = {
         })
       }
     })
-    
+
     return { counts, total }
   },
 
@@ -325,7 +370,7 @@ export const firebaseApi = {
     const votosRef = collection(dbInstance, 'votos')
     const q = query(votosRef, where('tipoVotacao', '==', abaNome))
     const snapshot = await getDocs(q)
-    
+
     return snapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
@@ -337,7 +382,7 @@ export const firebaseApi = {
     const votosRef = collection(dbInstance, 'votos')
     const q = query(votosRef, where('tipoVotacao', '==', abaNome))
     const snapshot = await getDocs(q)
-    
+
     // Deletar todos os votos encontrados
     const deletePromises = snapshot.docs.map(doc => deleteDoc(doc.ref))
     await Promise.all(deletePromises)
@@ -347,35 +392,35 @@ export const firebaseApi = {
   authenticateAdmin: async (emailOrCpf: string, senha: string): Promise<AdminData> => {
     const normalizedInput = normalizeCPF(emailOrCpf)
     const isEmail = emailOrCpf.includes('@')
-    
+
     const dbInstance = ensureDb()
     const administradoresRef = collection(dbInstance, 'administradores')
-    
+
     let q
     if (isEmail) {
       q = query(administradoresRef, where('email', '==', emailOrCpf.toLowerCase()))
     } else {
       q = query(administradoresRef, where('cpf', '==', normalizedInput))
     }
-    
+
     const snapshot = await getDocs(q)
-    
+
     if (snapshot.empty) {
       return { success: false, nome: '' }
     }
-    
+
     const admin = snapshot.docs[0].data()
-    
+
     // Verificar senha (formato: apartamento + torre, ou senha customizada)
     const expectedPassword = admin.senha || `${admin.apartamento}${admin.torre}`
-    
+
     if (senha === expectedPassword || senha === admin.senha) {
       return {
         success: true,
         nome: admin.nome || 'Administrador'
       }
     }
-    
+
     return { success: false, nome: '' }
   },
 
@@ -383,10 +428,10 @@ export const firebaseApi = {
   getAllMoradores: async (): Promise<Morador[]> => {
     const dbInstance = ensureDb()
     const administradoresRef = collection(dbInstance, 'administradores')
-    
+
     // Buscar todos os registros (sem filtro) para incluir moradores e usuário mestre
     const snapshot = await getDocs(administradoresRef)
-    
+
     // Filtrar apenas moradores e usuários mestres (excluir administradores não-mestres)
     return snapshot.docs
       .map(doc => ({
@@ -399,7 +444,7 @@ export const firebaseApi = {
       })
   },
 
-  createMorador: async (moradorData: { 
+  createMorador: async (moradorData: {
     cpf: string
     nome: string
     apartamento: string
@@ -410,7 +455,7 @@ export const firebaseApi = {
   }): Promise<void> => {
     const { cpf, nome, apartamento, torre, acesso = 'Morador', email = null, isMaster = false } = moradorData
     const normalizedCPF = normalizeCPF(cpf)
-    
+
     // Validar dados
     if (!normalizedCPF || !nome.trim() || !apartamento.trim() || !torre.trim()) {
       throw new Error('Todos os campos obrigatórios devem ser preenchidos')
@@ -420,10 +465,10 @@ export const firebaseApi = {
     if (isMaster && acesso !== 'Administrador') {
       throw new Error('Apenas Administradores podem ser marcados como Mestre')
     }
-    
+
     const dbInstance = ensureDb()
     const administradoresRef = collection(dbInstance, 'administradores')
-    
+
     // Verificar se já existe por Apartamento + Torre (campos chave)
     const qByApt = query(
       administradoresRef,
@@ -431,17 +476,17 @@ export const firebaseApi = {
       where('torre', '==', torre.trim())
     )
     const snapshotApt = await getDocs(qByApt)
-    
+
     if (!snapshotApt.empty) {
       // Se já existe, atualizar o registro existente
       const docRef = snapshotApt.docs[0]
       const existingData = docRef.data()
-      
+
       // Não atualizar se for usuário mestre
       if (existingData.isMaster) {
         throw new Error('Não é possível atualizar usuário mestre')
       }
-      
+
       await updateDoc(docRef.ref, {
         cpf: normalizedCPF,
         nome: nome.trim(),
@@ -452,7 +497,7 @@ export const firebaseApi = {
       })
       return // Retornar sem criar novo
     }
-    
+
     // Criar novo morador se não existir
     const senha = `${apartamento.trim()}${torre.trim()}`
     await addDoc(administradoresRef, {
@@ -471,32 +516,32 @@ export const firebaseApi = {
   updateMorador: async (id: string, moradorData: { cpf: string; nome: string; apartamento: string; torre: string }): Promise<void> => {
     const { cpf, nome, apartamento, torre } = moradorData
     const normalizedCPF = normalizeCPF(cpf)
-    
+
     // Validar dados
     if (!normalizedCPF || !nome.trim()) {
       throw new Error('CPF e Nome são obrigatórios')
     }
-    
+
     const dbInstance = ensureDb()
     const administradoresRef = collection(dbInstance, 'administradores')
     const docRef = doc(administradoresRef, id)
     const docSnap = await getDoc(docRef)
-    
+
     if (!docSnap.exists()) {
       throw new Error('Morador não encontrado')
     }
-    
+
     const existingData = docSnap.data()
-    
+
     // Não permitir editar usuário mestre
     if (existingData.isMaster) {
       throw new Error('Não é possível editar usuário mestre')
     }
-    
+
     // Não permitir alterar apartamento ou torre - usar os valores existentes
     const apartamentoFinal = existingData.apartamento || apartamento.trim()
     const torreFinal = existingData.torre || torre.trim()
-    
+
     // Atualizar apenas CPF e Nome (apartamento e torre não podem ser alterados)
     const senha = `${apartamentoFinal}${torreFinal}`
     await updateDoc(docRef, {
@@ -511,18 +556,18 @@ export const firebaseApi = {
     const administradoresRef = collection(dbInstance, 'administradores')
     const docRef = doc(administradoresRef, id)
     const docSnap = await getDoc(docRef)
-    
+
     if (!docSnap.exists()) {
       throw new Error('Morador não encontrado')
     }
-    
+
     const data = docSnap.data()
-    
+
     // Não permitir deletar usuário mestre
     if (data.isMaster) {
       throw new Error('Não é possível excluir usuário mestre')
     }
-    
+
     await deleteDoc(docRef)
   },
 
@@ -533,7 +578,6 @@ export const firebaseApi = {
     return 'Exportação para Excel será implementada em breve'
   },
 
-  // Upload Excel - Processa planilha e salva na coleção administradores
   processExcelUpload: async (base64Data: string, fileName: string): Promise<{ inserted: number; updated: number; total: number }> => {
     // Converter base64 para ArrayBuffer
     const binaryString = atob(base64Data)
@@ -561,6 +605,112 @@ export const firebaseApi = {
     }
 
     return await response.json()
+  },
+
+  // Dashboard Helpers
+  getVotesByCpf: async (cpf: string): Promise<Voto[]> => {
+    const normalizedCPF = normalizeCPF(cpf)
+    const dbInstance = ensureDb()
+    const votosRef = collection(dbInstance, 'votos')
+    const q = query(votosRef, where('cpf', '==', normalizedCPF))
+    const snapshot = await getDocs(q)
+    return snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    } as Voto))
+  },
+
+  getReformas: async (): Promise<Reforma[]> => {
+    const dbInstance = ensureDb()
+    try {
+      const reformasRef = collection(dbInstance, 'reformas')
+      const snapshot = await getDocs(reformasRef)
+      return snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      } as Reforma))
+    } catch (e) {
+      console.warn('Coleção de reformas não encontrada ou erro ao acessar:', e)
+      return []
+    }
+  },
+
+  getReformasByUser: async (cpf: string): Promise<Reforma[]> => {
+    const dbInstance = ensureDb()
+    // Precisamos buscar o ID do morador pelo CPF primeiro ou assumir que o CPF é guardado na reforma?
+    // Vamos guardar o CPF na reforma para facilitar busca inversa se necessário, 
+    // mas aqui vou buscar pelo moradorId se o contexto guardar o ID, ou adicionar CPF na reforma.
+    // Melhor adicionar cpf na interface Reforma para garantir.
+    // Mas seguindo o padrão atual, vamos buscar por 'moradorId' que será o ID do doc do morador.
+
+    // UPDATE: Vamos adicionar campo cpf na Reforma para facilitar query
+    const reformasRef = collection(dbInstance, 'reformas')
+    const q = query(reformasRef, where('moradorCpf', '==', normalizeCPF(cpf)))
+    const snapshot = await getDocs(q)
+    return snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    } as Reforma))
+  },
+
+  createReforma: async (reformaData: Omit<Reforma, 'id' | 'createdAt' | 'updatedAt' | 'status'> & { moradorCpf: string }): Promise<string> => {
+    const dbInstance = ensureDb()
+    const reformasRef = collection(dbInstance, 'reformas')
+
+    const docRef = await addDoc(reformasRef, {
+      ...reformaData,
+      status: 'Em Análise',
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    })
+    return docRef.id
+  },
+
+  updateReforma: async (id: string, updates: Partial<Reforma>): Promise<void> => {
+    const dbInstance = ensureDb()
+    const docRef = doc(dbInstance, 'reformas', id)
+    await updateDoc(docRef, {
+      ...updates,
+      updatedAt: serverTimestamp()
+    })
+  },
+
+  subscribeToReforma: (id: string, onUpdate: (reforma: Reforma) => void): (() => void) => {
+    const dbInstance = ensureDb()
+    const docRef = doc(dbInstance, 'reformas', id)
+    return onSnapshot(docRef, (doc) => {
+      if (doc.exists()) {
+        onUpdate({ id: doc.id, ...doc.data() } as Reforma)
+      }
+    })
+  },
+
+  setTypingStatus: async (id: string, user: string, isTyping: boolean): Promise<void> => {
+    const dbInstance = ensureDb()
+    const docRef = doc(dbInstance, 'reformas', id)
+    await updateDoc(docRef, {
+      usersTyping: isTyping ? arrayUnion(user) : arrayRemove(user)
+    })
+  },
+
+  subscribeToReformas: (isAdmin: boolean, cpf: string, onUpdate: (reformas: Reforma[]) => void): (() => void) => {
+    const dbInstance = ensureDb()
+    const reformasRef = collection(dbInstance, 'reformas')
+
+    let q = query(reformasRef)
+    if (!isAdmin) {
+      q = query(reformasRef, where('moradorCpf', '==', normalizeCPF(cpf)))
+    }
+
+    return onSnapshot(q, (snapshot) => {
+      const data = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      } as Reforma))
+
+      onUpdate(data)
+    })
   }
+
 }
 

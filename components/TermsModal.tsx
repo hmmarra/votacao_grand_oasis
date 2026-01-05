@@ -12,7 +12,7 @@ interface TermsModalProps {
 export function TermsModal({ isOpen, onClose, type }: TermsModalProps) {
   // Bloquear scroll do body quando modal estiver aberto
   useBodyScrollLock(isOpen)
-  
+
   // Fechar com ESC
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -37,18 +37,18 @@ export function TermsModal({ isOpen, onClose, type }: TermsModalProps) {
   const content = isTerms ? (
     <div className="space-y-4 text-gray-700 dark:text-gray-300">
       <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Termos de Uso</h2>
-      
+
       <section className="space-y-3">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white">1. Aceitação dos Termos</h3>
         <p className="text-sm leading-relaxed">
-          Ao acessar e utilizar o Sistema de Votação do Condomínio Grand Oasis Poá, você concorda em cumprir e estar vinculado aos seguintes termos e condições de uso. Se você não concorda com qualquer parte destes termos, não deve utilizar o sistema.
+          Ao acessar e utilizar o Sistema de Votação do Condomínio Meu Condomínio, você concorda em cumprir e estar vinculado aos seguintes termos e condições de uso. Se você não concorda com qualquer parte destes termos, não deve utilizar o sistema.
         </p>
       </section>
 
       <section className="space-y-3">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white">2. Uso do Sistema</h3>
         <p className="text-sm leading-relaxed">
-          O sistema é destinado exclusivamente para moradores e administradores autorizados do Condomínio Grand Oasis Poá. É proibido:
+          O sistema é destinado exclusivamente para moradores e administradores autorizados do Condomínio Meu Condomínio. É proibido:
         </p>
         <ul className="list-disc list-inside text-sm space-y-1 ml-4">
           <li>Compartilhar suas credenciais de acesso com terceiros</li>
@@ -109,11 +109,11 @@ export function TermsModal({ isOpen, onClose, type }: TermsModalProps) {
   ) : (
     <div className="space-y-4 text-gray-700 dark:text-gray-300">
       <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Política de Privacidade e Proteção de Dados</h2>
-      
+
       <section className="space-y-3">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white">1. Introdução</h3>
         <p className="text-sm leading-relaxed">
-          Esta Política de Privacidade descreve como o Sistema de Votação do Condomínio Grand Oasis Poá coleta, usa, armazena e protege seus dados pessoais, em conformidade com a Lei Geral de Proteção de Dados (LGPD - Lei nº 13.709/2018).
+          Esta Política de Privacidade descreve como o Sistema de Votação do Condomínio Meu Condomínio coleta, usa, armazena e protege seus dados pessoais, em conformidade com a Lei Geral de Proteção de Dados (LGPD - Lei nº 13.709/2018).
         </p>
       </section>
 
@@ -228,7 +228,7 @@ export function TermsModal({ isOpen, onClose, type }: TermsModalProps) {
       <section className="space-y-3">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white">11. Contato</h3>
         <p className="text-sm leading-relaxed">
-          Para questões relacionadas a esta Política de Privacidade ou para exercer seus direitos, entre em contato com a administração do Condomínio Grand Oasis Poá.
+          Para questões relacionadas a esta Política de Privacidade ou para exercer seus direitos, entre em contato com a administração do Condomínio Meu Condomínio.
         </p>
       </section>
 
@@ -241,11 +241,11 @@ export function TermsModal({ isOpen, onClose, type }: TermsModalProps) {
   )
 
   return (
-    <div 
+    <div
       className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
       onClick={onClose}
     >
-      <div 
+      <div
         className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
@@ -260,7 +260,7 @@ export function TermsModal({ isOpen, onClose, type }: TermsModalProps) {
             aria-label="Fechar"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 24 24" fill="currentColor">
-              <path fillRule="evenodd" d="M5.47 5.47a.75.75 0 0 1 1.06 0L12 10.94l5.47-5.47a.75.75 0 1 1 1.06 1.06L13.06 12l5.47 5.47a.75.75 0 1 1-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 0 1-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 0 1 0-1.06Z" clipRule="evenodd"/>
+              <path fillRule="evenodd" d="M5.47 5.47a.75.75 0 0 1 1.06 0L12 10.94l5.47-5.47a.75.75 0 1 1 1.06 1.06L13.06 12l5.47 5.47a.75.75 0 1 1-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 0 1-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 0 1 0-1.06Z" clipRule="evenodd" />
             </svg>
           </button>
         </div>

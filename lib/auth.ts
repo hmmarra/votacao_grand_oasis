@@ -25,32 +25,32 @@ export async function authenticateUser(emailOrCpf: string, senha: string): Promi
   try {
     const normalizedInput = normalizeCPF(emailOrCpf)
     const isEmail = emailOrCpf.includes('@')
-    
+
     if (!db) {
       throw new Error('Firebase não inicializado')
     }
-    
+
     const administradoresRef = collection(db, 'administradores')
-    
+
     let q
     if (isEmail) {
       q = query(administradoresRef, where('email', '==', emailOrCpf.toLowerCase()))
     } else {
       q = query(administradoresRef, where('cpf', '==', normalizedInput))
     }
-    
+
     const snapshot = await getDocs(q)
-    
+
     if (snapshot.empty) {
       return null
     }
-    
+
     const admin = snapshot.docs[0]
     const data = admin.data()
-    
+
     // Verificar senha (formato: apartamento + torre, ou senha customizada)
     const expectedPassword = data.senha || `${data.apartamento}${data.torre}`
-    
+
     if (senha === expectedPassword || senha === data.senha) {
       return {
         id: admin.id,
@@ -64,7 +64,7 @@ export async function authenticateUser(emailOrCpf: string, senha: string): Promi
         isMaster: data.isMaster || false
       }
     }
-    
+
     return null
   } catch (error) {
     console.error('Erro na autenticação:', error)
@@ -77,23 +77,34 @@ export function useAuth() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Verificar se há usuário salvo no sessionStorage
-    const savedUser = sessionStorage.getItem('user')
+    // Verificar se há usuário salvo (primeiro localStorage, depois sessionStorage)
+    const savedUserLocal = localStorage.getItem('user')
+    const savedUserSession = sessionStorage.getItem('user')
+    const savedUser = savedUserLocal || savedUserSession
+
     if (savedUser) {
       try {
         setUser(JSON.parse(savedUser))
       } catch (e) {
+        localStorage.removeItem('user')
         sessionStorage.removeItem('user')
       }
     }
     setLoading(false)
   }, [])
 
-  const login = async (emailOrCpf: string, senha: string): Promise<boolean> => {
+  const login = async (emailOrCpf: string, senha: string, rememberMe: boolean = false): Promise<boolean> => {
     const authenticatedUser = await authenticateUser(emailOrCpf, senha)
     if (authenticatedUser) {
       setUser(authenticatedUser)
-      sessionStorage.setItem('user', JSON.stringify(authenticatedUser))
+      // Salva no storage apropriado e limpa o outro para evitar conflitos
+      if (rememberMe) {
+        localStorage.setItem('user', JSON.stringify(authenticatedUser))
+        sessionStorage.removeItem('user')
+      } else {
+        sessionStorage.setItem('user', JSON.stringify(authenticatedUser))
+        localStorage.removeItem('user')
+      }
       return true
     }
     return false
@@ -102,6 +113,7 @@ export function useAuth() {
   const logout = () => {
     setUser(null)
     sessionStorage.removeItem('user')
+    localStorage.removeItem('user')
   }
 
   return { user, loading, login, logout }

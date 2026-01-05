@@ -1,4 +1,4 @@
-# Sistema de Votação - Next.js
+# Meu Condomínio - Next.js (Versão 2.0)
 
 Sistema de votação moderno construído com Next.js, TypeScript, Tailwind CSS e suporte completo a dark mode.
 
@@ -121,6 +121,7 @@ npm run dev
 - **Visualizar Pauta** - Detalhes, placar e lista de votos
 - **Gerenciar Pautas** - CRUD completo de pautas
 - **Gerenciar Moradores** - Upload de Excel e gerenciamento
+- **Usuário Admin** - admin@admin.com / "Senha123456"
 
 ## 🔧 Configuração do Google Apps Script
 

@@ -4,29 +4,29 @@ import Image from 'next/image'
 
 export function Footer() {
   return (
-    <footer className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 mt-auto">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <Image
-              src="/img/logo_grand_oasis.webp"
-              alt="Grand Oasis Poá Logo"
-              width={40}
-              height={40}
-              className="h-10 w-auto object-contain"
-            />
-            <div>
-              <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">
-                Grand Oasis Poá
-              </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                © 2025
-              </p>
-            </div>
-          </div>
-          <div className="text-xs text-gray-500 dark:text-gray-400 text-center sm:text-right">
-            <p>Desenvolvido por <span className="font-medium text-gray-600 dark:text-gray-300">Luis Marra</span></p>
-          </div>
+    <footer className="w-full flex justify-center py-6 shrink-0 z-40">
+      <div className="inline-flex items-center gap-x-6 gap-y-2 px-6 py-3 bg-slate-900/40 backdrop-blur-md border border-slate-800/50 rounded-full shadow-2xl text-[10px] font-bold uppercase tracking-widest text-slate-500/60 dark:text-slate-500/40 transition-all duration-300 hover:border-slate-700/60 hover:bg-slate-900/60">
+        <div className="flex items-center gap-2">
+          <Image
+            src="/img/logo_grand_oasis.webp"
+            alt="Meu Condomínio Logo"
+            width={18}
+            height={18}
+            className="h-4 w-auto object-contain opacity-40 grayscale hover:opacity-100 hover:grayscale-0 transition-all duration-300"
+            style={{ height: 'auto' }}
+          />
+          <span className="text-slate-500 dark:text-slate-500">Meu Condomínio</span>
+        </div>
+
+        <span className="opacity-30">•</span>
+
+        <span>© 2026</span>
+
+        <span className="opacity-30">•</span>
+
+        <div className="flex items-center gap-1">
+          <span>Desenvolvido por</span>
+          <span className="text-slate-500 dark:text-slate-400">Luis Marra</span>
         </div>
       </div>
     </footer>

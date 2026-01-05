@@ -1,0 +1,32 @@
+'use client'
+
+import { TopBar } from '@/components/TopBar'
+import { Sidebar } from '@/components/Sidebar'
+import { ProtectedRoute } from '@/components/ProtectedRoute'
+import { Footer } from '@/components/Footer'
+import { GerenciarPautasTab } from '@/components/admin/GerenciarPautasTab'
+
+export default function AdminPautasPage() {
+    return (
+        <ProtectedRoute requiredAccess="Administrador">
+            <div className="min-h-screen flex bg-transparent">
+                <Sidebar isAdmin={true} />
+                <div className="flex-1 flex flex-col min-w-0">
+                    <div className="flex-1 py-6 sm:py-10 px-3 sm:px-4">
+                        <div className="max-w-7xl mx-auto">
+                            <div className="mb-6">
+                                <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Gerenciar Pautas</h1>
+                                <p className="text-sm text-slate-500 dark:text-slate-400">
+                                    Crie, edite e acompanhe as pautas de votação.
+                                </p>
+                            </div>
+
+                            <GerenciarPautasTab />
+                        </div>
+                    </div>
+                    <Footer />
+                </div>
+            </div>
+        </ProtectedRoute>
+    )
+}
