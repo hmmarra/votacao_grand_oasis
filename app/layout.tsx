@@ -7,7 +7,7 @@ const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
   title: 'Meu Condomínio',
-  description: 'Sistema de votação para assembleias e condomínios',
+  description: 'Seu lar, sua voz, sua decisão',
 }
 
 export default function RootLayout({

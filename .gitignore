@@ -40,3 +40,7 @@ next-env.d.ts
 # Other Paths
 ignorar
 
+# Arquivos temporários
+.temp_vistoria_button.txt
+Checklist de ajustes.txt
+
