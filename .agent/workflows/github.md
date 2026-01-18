@@ -8,7 +8,7 @@ Identifique a branch atual e salve as alterações locais.
 ```bash
 git branch --show-current
 git add .
-git commit -m "feat/fix: descrição do trabalho realizado"
+git commit -m "feat/fix: descrição do trabalho realizado" (Em PT-br)
 git push origin {branch_atual}
 ```
 

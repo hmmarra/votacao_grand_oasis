@@ -1514,7 +1514,16 @@ function ModalDetalhesReforma({ reforma, onClose, onUpdate, onEdit, user, showNo
                                 {isAdmin && (
                                     <div className="mb-4">
                                         <button
-                                            onClick={() => setShowVistoriaModal(true)}
+                                            onClick={() => {
+                                                setVistoriaForm({
+                                                    data: new Date().toISOString().split('T')[0],
+                                                    responsavel: user?.nome || '',
+                                                    status: 'Aguardando Vistoria',
+                                                    observacoes: '',
+                                                    fotos: []
+                                                })
+                                                setShowVistoriaModal(true)
+                                            }}
                                             className="w-full py-3 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold shadow-md shadow-teal-500/20 transition-all flex items-center justify-center gap-2"
                                         >
                                             <Plus className="w-4 h-4" />
@@ -1524,104 +1533,7 @@ function ModalDetalhesReforma({ reforma, onClose, onUpdate, onEdit, user, showNo
                                 )}
 
                                 {/* DELETAR TUDO ATÉ A LINHA 1577 */}
-                                {false && (
-                                    <div className="bg-slate-50 dark:bg-slate-800/30 rounded-xl p-4 border border-slate-200 dark:border-slate-700">
-                                        <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4 flex items-center gap-2">
-                                            <Plus className="w-4 h-4" />
-                                            Nova Vistoria
-                                        </h4>
 
-                                        <div className="space-y-4">
-                                            <div className="grid grid-cols-2 gap-4">
-                                                <div>
-                                                    <label className="text-[10px] uppercase font-bold text-slate-400 mb-1 block">Data da Vistoria</label>
-                                                    <div className="relative">
-                                                        <input
-                                                            type="date"
-                                                            value={vistoriaForm.data}
-                                                            onChange={e => setVistoriaForm({ ...vistoriaForm, data: e.target.value })}
-                                                            className="w-full pl-9 pr-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-200 focus:ring-2 focus:ring-teal-500/20 outline-none"
-                                                        />
-                                                        <Calendar className="w-4 h-4 text-slate-400 absolute left-3 top-2" />
-                                                    </div>
-                                                </div>
-                                                <div>
-                                                    <label className="text-[10px] uppercase font-bold text-slate-400 mb-1 block">Responsável</label>
-                                                    <div className="relative">
-                                                        <input
-                                                            type="text"
-                                                            value={vistoriaForm.responsavel}
-                                                            onChange={e => setVistoriaForm({ ...vistoriaForm, responsavel: e.target.value })}
-                                                            className="w-full pl-9 pr-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-200 focus:ring-2 focus:ring-teal-500/20 outline-none"
-                                                        />
-                                                        <User className="w-4 h-4 text-slate-400 absolute left-3 top-2" />
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <div>
-                                                <label className="text-[10px] uppercase font-bold text-slate-400 mb-1 block">Status da Vistoria</label>
-                                                <select
-                                                    value={vistoriaForm.status}
-                                                    onChange={e => setVistoriaForm({ ...vistoriaForm, status: e.target.value })}
-                                                    className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-200 focus:ring-2 focus:ring-teal-500/20 outline-none appearance-none"
-                                                >
-                                                    <option value="Aguardando Vistoria">Aguardando Vistoria</option>
-                                                    <option value="Vistoria Agendada">Vistoria Agendada</option>
-                                                    <option value="Vistoria Aprovada">Vistoria Aprovada</option>
-                                                    <option value="Vistoria Reprovada">Vistoria Reprovada</option>
-                                                </select>
-                                            </div>
-
-                                            <div>
-                                                <label className="text-[10px] uppercase font-bold text-slate-400 mb-1 block">Observações</label>
-                                                <textarea
-                                                    value={vistoriaForm.observacoes}
-                                                    onChange={e => setVistoriaForm({ ...vistoriaForm, observacoes: e.target.value })}
-                                                    placeholder="Observações da vistoria..."
-                                                    className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-200 focus:ring-2 focus:ring-teal-500/20 outline-none min-h-[80px]"
-                                                />
-                                            </div>
-
-                                            <div>
-                                                <label className="text-[10px] uppercase font-bold text-slate-400 mb-1 block">Fotos da Vistoria</label>
-                                                <div className="grid grid-cols-4 gap-2">
-                                                    {vistoriaForm.fotos.map((foto, idx) => (
-                                                        <div key={idx} className="relative group aspect-square rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700">
-                                                            <img src={getImageUrl(foto)} className="w-full h-full object-cover" />
-                                                            <button
-                                                                onClick={() => removeVistoriaPhoto(idx)}
-                                                                className="absolute top-1 right-1 bg-red-500/80 hover:bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                                                            >
-                                                                <X className="w-3 h-3" />
-                                                            </button>
-                                                        </div>
-                                                    ))}
-                                                    <label className="aspect-square rounded-lg border-2 border-dashed border-slate-200 dark:border-slate-700 flex flex-col items-center justify-center cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-all group">
-                                                        {uploadingVistoria ? (
-                                                            <div className="w-5 h-5 border-2 border-teal-500/30 border-t-cyan-500 rounded-full animate-spin"></div>
-                                                        ) : (
-                                                            <>
-                                                                <Camera className="w-5 h-5 text-slate-400 group-hover:text-teal-500" />
-                                                                <span className="text-[9px] text-slate-400 mt-1 font-bold group-hover:text-teal-500">Adicionar</span>
-                                                            </>
-                                                        )}
-                                                        <input type="file" multiple accept="image/*" className="hidden" onChange={handleVistoriaPhotoUpload} disabled={uploadingVistoria} />
-                                                    </label>
-                                                </div>
-                                            </div>
-
-                                            <button
-                                                onClick={saveVistoria}
-                                                disabled={statusLoading || uploadingVistoria}
-                                                className="w-full py-2.5 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-xs font-bold shadow-md shadow-teal-500/20 transition-all flex items-center justify-center gap-2"
-                                            >
-                                                {statusLoading ? <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : <Zap className="w-3.5 h-3.5" />}
-                                                Salvar Vistoria
-                                            </button>
-                                        </div>
-                                    </div>
-                                )}
 
                                 {/* Histórico de Vistorias */}
                                 <div className="space-y-4">
