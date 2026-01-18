@@ -15,9 +15,11 @@ export async function POST(req: NextRequest) {
         }
 
         const buffer = Buffer.from(await file.arrayBuffer());
-        const timestamp = Date.now();
-        const cleanFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
-        const key = `art-oasis/${timestamp}-${cleanFileName}`;
+
+        // Use crypto.randomUUID() for collision-free keys
+        const fileExt = file.name.split('.').pop();
+        const uuid = crypto.randomUUID();
+        const key = `art-oasis/${uuid}.${fileExt}`;
 
         const command = new PutObjectCommand({
             Bucket: R2_BUCKET_NAME,
@@ -28,10 +30,10 @@ export async function POST(req: NextRequest) {
 
         await s3Client.send(command);
 
-        // Return the key. If you have a public domain for R2, verify it. Otherwise use local proxy.
+        // Path-based URL ensures caches respect unique keys
         const publicUrl = process.env.R2_PUBLIC_DOMAIN
             ? `${process.env.R2_PUBLIC_DOMAIN}/${key}`
-            : `/api/image?key=${key}`;
+            : `/api/image/${encodeURIComponent(key)}`;
 
         return NextResponse.json({
             success: true,

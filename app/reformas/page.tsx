@@ -1054,7 +1054,7 @@ function ModalDetalhesReforma({ reforma, onClose, onUpdate, onEdit, user, showNo
     const getImageUrl = (urlOrKey: string) => {
         if (!urlOrKey) return ''
         if (urlOrKey.startsWith('http') || urlOrKey.startsWith('/api')) return urlOrKey
-        return `/api/image?key=${urlOrKey}`
+        return `/api/image/${encodeURIComponent(urlOrKey)}`
     }
 
     const handleVistoriaPhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {

@@ -2,18 +2,23 @@ import { NextRequest, NextResponse } from 'next/server';
 import { s3Client, R2_BUCKET_NAME } from '@/lib/cloudflare/r2';
 import { GetObjectCommand } from '@aws-sdk/client-s3';
 
-export async function GET(req: NextRequest) {
-    const { searchParams } = new URL(req.url);
-    const key = searchParams.get('key');
-
-    if (!key) {
-        return NextResponse.json({ error: 'Key is required' }, { status: 400 });
-    }
-
+export async function GET(
+    req: NextRequest,
+    { params }: { params: Promise<{ key: string }> }
+) {
     try {
+        const { key } = await params;
+
+        if (!key) {
+            return NextResponse.json({ error: 'Key is required' }, { status: 400 });
+        }
+
+        // Decodificar a chave, pois ela vem codificada na URL
+        const decodedKey = decodeURIComponent(key);
+
         const command = new GetObjectCommand({
             Bucket: R2_BUCKET_NAME,
-            Key: key,
+            Key: decodedKey,
         });
 
         const response = await s3Client.send(command);
