@@ -1036,7 +1036,7 @@ function ModalDetalhesReforma({ reforma, onClose, onUpdate, onEdit, user, showNo
     const [statusLoading, setStatusLoading] = useState(false)
     const [confirmStatus, setConfirmStatus] = useState<string | null>(null)
     const [activeTab, setActiveTab] = useState<'solicitacao' | 'vistoria'>('solicitacao')
-    const [expandedPhoto, setExpandedPhoto] = useState<string | null>(null)
+    const [activeLightbox, setActiveLightbox] = useState<{ photos: string[], index: number } | null>(null)
     const [showVistoriaModal, setShowVistoriaModal] = useState(false)
     const [deleteVistoriaIndex, setDeleteVistoriaIndex] = useState<number | null>(null)
 
@@ -1199,43 +1199,28 @@ function ModalDetalhesReforma({ reforma, onClose, onUpdate, onEdit, user, showNo
 
     // Keyboard navigation for Lightbox
     useEffect(() => {
-        if (!expandedPhoto) return
+        if (!activeLightbox) return
 
         const handleKeyDown = (e: KeyboardEvent) => {
             if (e.key === 'Escape') {
-                setExpandedPhoto(null)
+                setActiveLightbox(null)
                 return
             }
 
-            // Find current gallery
-            let currentGallery: string[] = []
-            if (reforma.vistorias) {
-                for (const v of reforma.vistorias) {
-                    if (v.fotos && v.fotos.includes(expandedPhoto)) {
-                        currentGallery = v.fotos
-                        break
-                    }
-                }
-            }
-
-            if (currentGallery.length <= 1) return
-
-            const currentIndex = currentGallery.indexOf(expandedPhoto)
-
             if (e.key === 'ArrowLeft') {
-                if (currentIndex > 0) {
-                    setExpandedPhoto(currentGallery[currentIndex - 1])
+                if (activeLightbox.index > 0) {
+                    setActiveLightbox(prev => prev ? { ...prev, index: prev.index - 1 } : null)
                 }
             } else if (e.key === 'ArrowRight') {
-                if (currentIndex < currentGallery.length - 1) {
-                    setExpandedPhoto(currentGallery[currentIndex + 1])
+                if (activeLightbox.index < activeLightbox.photos.length - 1) {
+                    setActiveLightbox(prev => prev ? { ...prev, index: prev.index + 1 } : null)
                 }
             }
         }
 
         window.addEventListener('keydown', handleKeyDown)
         return () => window.removeEventListener('keydown', handleKeyDown)
-    }, [expandedPhoto, reforma.vistorias])
+    }, [activeLightbox])
 
     const handleTyping = () => {
         if (typingTimeoutRef.current) {
@@ -1719,7 +1704,7 @@ function ModalDetalhesReforma({ reforma, onClose, onUpdate, onEdit, user, showNo
                                                             {vistoria.fotos.map((foto: string, fIdx: number) => (
                                                                 <button
                                                                     key={fIdx}
-                                                                    onClick={() => setExpandedPhoto(foto)}
+                                                                    onClick={() => setActiveLightbox({ photos: vistoria.fotos, index: fIdx })}
                                                                     className="aspect-square rounded-lg overflow-hidden border border-slate-100 dark:border-slate-700 hover:ring-2 hover:ring-teal-500/50 transition-all"
                                                                 >
                                                                     <img src={getImageUrl(foto)} alt="" className="w-full h-full object-cover" />
@@ -1737,25 +1722,7 @@ function ModalDetalhesReforma({ reforma, onClose, onUpdate, onEdit, user, showNo
                     </div>
                 </div>
 
-                {/* Lightbox para fotos */}
-                {expandedPhoto && (
-                    <div
-                        className="fixed inset-0 bg-black/90 z-[300] flex items-center justify-center p-4 animate-fadeIn"
-                        onClick={() => setExpandedPhoto(null)}
-                    >
-                        <button
-                            onClick={() => setExpandedPhoto(null)}
-                            className="absolute top-4 right-4 text-white hover:text-teal-500 transition-colors"
-                        >
-                            <X className="w-8 h-8" />
-                        </button>
-                        <img
-                            src={expandedPhoto}
-                            className="max-w-full max-h-[90vh] rounded-lg shadow-2xl animate-scaleIn"
-                            onClick={(e) => e.stopPropagation()}
-                        />
-                    </div>
-                )}
+
 
                 {/* Right Side: Chat & History */}
                 <div className="w-1/2 flex flex-col bg-white dark:bg-slate-900">
@@ -1899,70 +1866,44 @@ function ModalDetalhesReforma({ reforma, onClose, onUpdate, onEdit, user, showNo
             )}
 
             {/* Lightbox para fotos */}
-            {expandedPhoto && (
+            {activeLightbox && (
                 <div
                     className="fixed inset-0 bg-black/90 z-[300] flex items-center justify-center p-4 animate-fadeIn"
-                    onClick={() => setExpandedPhoto(null)}
+                    onClick={() => setActiveLightbox(null)}
                 >
                     <button
-                        onClick={() => setExpandedPhoto(null)}
+                        onClick={() => setActiveLightbox(null)}
                         className="absolute top-4 right-4 text-white hover:text-teal-500 transition-colors z-[310]"
                     >
                         <X className="w-8 h-8" />
                     </button>
 
-                    {/* Navigation Buttons - Only show if there are multiple photos */}
-                    {(() => {
-                        // Encontrar todas as fotos de todas as vistorias para criar uma galeria unificada ou usar apenas as fotos da vistoria atual
-                        // Para simplificar, vou procurar a lista de fotos onde a foto atual está
-                        let currentGallery: string[] = []
-
-                        // Check vistorias
-                        if (reforma.vistorias) {
-                            for (const v of reforma.vistorias) {
-                                if (v.fotos && v.fotos.includes(expandedPhoto)) {
-                                    currentGallery = v.fotos
-                                    break
-                                }
-                            }
-                        }
-
-                        if (currentGallery.length <= 1) return null
-
-                        const currentIndex = currentGallery.indexOf(expandedPhoto)
-                        const prevPhoto = currentIndex > 0 ? currentGallery[currentIndex - 1] : null
-                        const nextPhoto = currentIndex < currentGallery.length - 1 ? currentGallery[currentIndex + 1] : null
-
-                        return (
-                            <>
-                                {prevPhoto && (
-                                    <button
-                                        onClick={(e) => {
-                                            e.stopPropagation()
-                                            setExpandedPhoto(prevPhoto)
-                                        }}
-                                        className="absolute left-4 top-1/2 -translate-y-1/2 text-white/50 hover:text-white transition-colors p-2 z-[310]"
-                                    >
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
-                                    </button>
-                                )}
-                                {nextPhoto && (
-                                    <button
-                                        onClick={(e) => {
-                                            e.stopPropagation()
-                                            setExpandedPhoto(nextPhoto)
-                                        }}
-                                        className="absolute right-4 top-1/2 -translate-y-1/2 text-white/50 hover:text-white transition-colors p-2 z-[310]"
-                                    >
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
-                                    </button>
-                                )}
-                            </>
-                        )
-                    })()}
+                    {/* Navigation Buttons */}
+                    {activeLightbox.index > 0 && (
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation()
+                                setActiveLightbox(prev => prev ? { ...prev, index: prev.index - 1 } : null)
+                            }}
+                            className="absolute left-4 top-1/2 -translate-y-1/2 text-white/50 hover:text-white transition-colors p-2 z-[310]"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                        </button>
+                    )}
+                    {activeLightbox.index < activeLightbox.photos.length - 1 && (
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation()
+                                setActiveLightbox(prev => prev ? { ...prev, index: prev.index + 1 } : null)
+                            }}
+                            className="absolute right-4 top-1/2 -translate-y-1/2 text-white/50 hover:text-white transition-colors p-2 z-[310]"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                        </button>
+                    )}
 
                     <img
-                        src={getImageUrl(expandedPhoto)}
+                        src={getImageUrl(activeLightbox.photos[activeLightbox.index])}
                         className="max-w-full max-h-[90vh] rounded-lg shadow-2xl animate-scaleIn object-contain"
                         onClick={(e) => e.stopPropagation()}
                     />
@@ -1972,7 +1913,10 @@ function ModalDetalhesReforma({ reforma, onClose, onUpdate, onEdit, user, showNo
             {/* Modal de Vistoria */}
             <VistoriaModal
                 isOpen={showVistoriaModal}
-                onClose={() => setShowVistoriaModal(false)}
+                onClose={() => {
+                    setShowVistoriaModal(false)
+                    setVistoriaForm(prev => ({ ...prev, fotos: [], observacoes: '', status: 'Aguardando Vistoria' }))
+                }}
                 vistoriaForm={vistoriaForm}
                 setVistoriaForm={setVistoriaForm}
                 uploadingVistoria={uploadingVistoria}
