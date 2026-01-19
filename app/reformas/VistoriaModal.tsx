@@ -77,7 +77,6 @@ export default function VistoriaModal({
                             onChange={e => setVistoriaForm({ ...vistoriaForm, status: e.target.value })}
                             className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-200 focus:ring-2 focus:ring-teal-500/20 outline-none appearance-none"
                         >
-                            <option value="Aguardando Vistoria">Aguardando Vistoria</option>
                             <option value="Vistoria Agendada">Vistoria Agendada</option>
                             <option value="Vistoria Aprovada">Vistoria Aprovada</option>
                             <option value="Vistoria Reprovada">Vistoria Reprovada</option>
@@ -115,8 +114,8 @@ export default function VistoriaModal({
                         />
                     </div>
 
-                    {/* Fotos - ocultar quando status for "Vistoria Agendada" */}
-                    {vistoriaForm.status !== 'Vistoria Agendada' && (
+                    {/* Fotos - ocultar quando o status não for de conclusão (Aprovada/Reprovada) */}
+                    {vistoriaForm.status !== 'Vistoria Agendada' && vistoriaForm.status !== 'Aguardando Vistoria' && vistoriaForm.status !== 'Cancelada' && (
                         <div>
                             <label className="text-[10px] uppercase font-bold text-slate-400 mb-1 block">Fotos da Vistoria</label>
                             <div className="grid grid-cols-4 gap-2">

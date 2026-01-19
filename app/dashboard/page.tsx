@@ -16,6 +16,8 @@ export default function DashboardPage() {
         totalPautas: 0,
         userVotes: 0,
         userReformas: 0,
+        userActiveReformas: 0,
+        totalReformas: 0,
         activeReformas: 0
     })
     const [loading, setLoading] = useState(true)
@@ -36,36 +38,37 @@ export default function DashboardPage() {
                     userVotesCount = votes.length
                 }
 
-                // 3. Carregar reformas
-                let myReformasCount = 0
-                let activeReformasCount = 0
-
                 if (api.getReformas) {
                     const reformas = await api.getReformas()
-
-                    // Filtrar reformas do usuário
-                    // Normaliza CPF para garantir comparação correta
                     const userCpf = user.cpf.replace(/\D/g, '')
 
-                    myReformasCount = reformas.filter((r: any) => {
-                        const rCpf = (r.cpf || '').replace(/\D/g, '')
+                    // Filtrar reformas do usuário
+                    const myReformas = reformas.filter((r: any) => {
+                        const rCpf = (r.cpf || r.moradorCpf || '').replace(/\D/g, '')
                         return rCpf === userCpf
-                    }).length
+                    })
 
-                    // Filtrar reformas ativas (status diferente de Concluído/Cancelado)
-                    // Ajuste conforme os status reais do seu sistema
-                    activeReformasCount = reformas.filter((r: any) => {
+                    // Filtrar reformas ativias do usuário
+                    const myActiveReformas = myReformas.filter((r: any) => {
                         const s = (r.status || '').toLowerCase()
-                        return s !== 'concluído' && s !== 'concluido' && s !== 'recusado' && s !== 'cancelado'
-                    }).length
-                }
+                        return s !== 'concluído' && s !== 'concluido' && s !== 'recusado' && s !== 'cancelado' && s !== 'vistoria aprovada'
+                    })
 
-                setStats({
-                    totalPautas: pautas.length,
-                    userVotes: userVotesCount,
-                    userReformas: myReformasCount,
-                    activeReformas: activeReformasCount
-                })
+                    // Todas as reformas (Admin)
+                    const allActiveReformas = reformas.filter((r: any) => {
+                        const s = (r.status || '').toLowerCase()
+                        return s !== 'concluído' && s !== 'concluido' && s !== 'recusado' && s !== 'cancelado' && s !== 'vistoria aprovada'
+                    })
+
+                    setStats({
+                        totalPautas: pautas.length,
+                        userVotes: userVotesCount,
+                        userReformas: myReformas.length,
+                        userActiveReformas: myActiveReformas.length,
+                        totalReformas: reformas.length,
+                        activeReformas: allActiveReformas.length
+                    })
+                }
 
             } catch (error) {
                 console.error('Erro ao carregar estatísticas:', error)
@@ -87,32 +90,43 @@ export default function DashboardPage() {
 
     const firstName = user?.nome?.split(' ')[0] || 'Morador'
 
+    // Definir se o usuário tem privilégios de visualização de todas as reformas
+    const isAdmin = user?.acesso === 'Administrador' || user?.acesso === 'Engenharia' || user?.acesso === 'Desenvolvedor' || user?.isMaster
+    const isPrivilegedUser = isAdmin
+
     return (
         <ProtectedRoute>
             <div className="min-h-screen flex bg-transparent">
                 <Sidebar />
 
                 <div className="flex-1 flex flex-col min-w-0">
-                    <div className="flex-1 w-full px-4 py-10">
+                    <div className="flex-1 w-full px-4 pt-24 lg:pt-10 pb-10">
                         <div className="w-full max-w-[1600px] mx-auto flex flex-col gap-6">
 
                             {/* Header Section */}
-                            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 py-2 border-b border-slate-700/50 pb-6">
-                                <div>
-                                    <h1 className="text-3xl sm:text-4xl font-bold text-slate-800 dark:text-white tracking-tight flex items-center gap-3">
-                                        {getGreeting()}, <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500">{firstName}</span>
+                            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 py-2 border-b border-slate-700/50 pb-8">
+                                <div className="space-y-2">
+                                    <h1 className="text-2xl sm:text-4xl font-bold text-slate-800 dark:text-white tracking-tight leading-tight">
+                                        {getGreeting()}, <br className="sm:hidden" />
+                                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500">
+                                            {firstName}
+                                        </span>
                                     </h1>
-                                    <p className="text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-2 text-sm sm:text-base">
-                                        <svg className="w-4 h-4 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                        </svg>
-                                        Painel do Condomínio &bull; {user?.apartamento} - Torre {user?.torre}
-                                    </p>
+                                    <div className="flex flex-col gap-1">
+                                        <div className="text-slate-500 dark:text-slate-400 flex items-center gap-2 text-sm sm:text-base font-medium">
+                                            <div className="w-5 h-5 rounded-full bg-emerald-500/10 flex items-center justify-center flex-shrink-0">
+                                                <svg className="w-3 h-3 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 12l2 2 4-4" />
+                                                </svg>
+                                            </div>
+                                            Painel do Condomínio &bull; {user?.apartamento} - Torre {user?.torre}
+                                        </div>
+                                    </div>
                                 </div>
-                                <div className="flex gap-3">
-                                    <div className="text-right">
-                                        <p className="text-[10px] uppercase tracking-wider font-bold text-slate-500">Data de Hoje</p>
-                                        <p className="text-sm font-semibold text-white">
+                                <div className="flex items-center sm:items-end gap-3 sm:text-right">
+                                    <div className="bg-slate-800/40 backdrop-blur-sm border border-slate-700/50 rounded-2xl px-4 py-2 sm:bg-transparent sm:border-0 sm:p-0">
+                                        <p className="text-[10px] uppercase tracking-widest font-black text-slate-500 mb-0.5">Data de Hoje</p>
+                                        <p className="text-sm sm:text-base font-bold text-white capitalize">
                                             {new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}
                                         </p>
                                     </div>
@@ -172,7 +186,7 @@ export default function DashboardPage() {
                                             </div>
                                         </div>
 
-                                        {/* Card 3: Minhas Reformas */}
+                                        {/* Card 3: Minhas/Total Reformas */}
                                         <div className="bg-[#0f172a]/60 backdrop-blur-md border border-slate-700/50 rounded-xl p-4 shadow-lg relative overflow-hidden group hover:border-orange-500/30 transition-all">
                                             <div className="absolute -right-6 -bottom-6 opacity-[0.03] transform rotate-12 group-hover:scale-110 transition-transform duration-500">
                                                 <svg className="w-24 h-24 text-orange-400" fill="currentColor" viewBox="0 0 24 24">
@@ -186,10 +200,16 @@ export default function DashboardPage() {
                                                     </div>
                                                 </div>
                                                 <div>
-                                                    <h3 className="text-slate-400 text-xs font-bold mb-0.5">Total de Reformas</h3>
+                                                    <h3 className="text-slate-400 text-xs font-bold mb-0.5">
+                                                        {isPrivilegedUser ? 'Total de Reformas' : 'Minhas Reformas'}
+                                                    </h3>
                                                     <div className="flex items-baseline gap-1.5">
-                                                        <span className="text-2xl font-bold text-white tracking-tight">{loading ? '-' : stats.userReformas}</span>
-                                                        <span className="text-[10px] text-slate-500">solicitadas</span>
+                                                        <span className="text-2xl font-bold text-white tracking-tight">
+                                                            {loading ? '-' : (isPrivilegedUser ? stats.totalReformas : stats.userReformas)}
+                                                        </span>
+                                                        <span className="text-[10px] text-slate-500">
+                                                            {isPrivilegedUser ? 'no condomínio' : 'solicitadas'}
+                                                        </span>
                                                     </div>
                                                 </div>
                                             </div>
@@ -211,10 +231,16 @@ export default function DashboardPage() {
                                                     </div>
                                                 </div>
                                                 <div>
-                                                    <h3 className="text-slate-400 text-xs font-bold mb-0.5">Reformas Ativas</h3>
+                                                    <h3 className="text-slate-400 text-xs font-bold mb-0.5">
+                                                        {isPrivilegedUser ? 'Reformas Ativas' : 'Minha Reforma Ativa'}
+                                                    </h3>
                                                     <div className="flex items-baseline gap-1.5">
-                                                        <span className="text-2xl font-bold text-white tracking-tight">{loading ? '-' : stats.activeReformas}</span>
-                                                        <span className="text-[10px] text-slate-500">no condomínio</span>
+                                                        <span className="text-2xl font-bold text-white tracking-tight">
+                                                            {loading ? '-' : (isPrivilegedUser ? stats.activeReformas : stats.userActiveReformas)}
+                                                        </span>
+                                                        <span className="text-[10px] text-slate-500">
+                                                            {isPrivilegedUser ? 'no prédio' : 'em andamento'}
+                                                        </span>
                                                     </div>
                                                 </div>
                                             </div>

@@ -2,7 +2,6 @@
 
 import { useEffect, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { TopBar } from '@/components/TopBar'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import { Sidebar } from '@/components/Sidebar'
 import { Footer } from '@/components/Footer'
@@ -191,7 +190,7 @@ function VotacaoContent() {
     <div className="min-h-screen flex bg-transparent">
       <Sidebar />
       <div className="flex-1 flex flex-col min-w-0">
-        <div className="flex-1 w-full px-4 py-10">
+        <div className="flex-1 w-full px-4 pt-24 lg:pt-10 pb-10">
           <div className="w-full max-w-[1600px] mx-auto flex flex-col gap-8">
             {/* Header */}
             <div>
@@ -503,7 +502,7 @@ export default function VotacaoPage() {
         <div className="min-h-screen flex bg-transparent">
           <Sidebar />
           <div className="flex-1 flex flex-col min-w-0">
-            <div className="flex-1 flex items-center justify-center">
+            <div className="flex-1 w-full px-4 pt-24 lg:pt-10 pb-10 flex items-center justify-center">
               <div className="text-center">
                 <div className="inline-block animate-spin rounded-full h-16 w-16 border-4 border-indigo-600 border-t-transparent mb-6"></div>
                 <p className="text-lg text-slate-600 dark:text-slate-400">Carregando...</p>

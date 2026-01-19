@@ -72,7 +72,7 @@ export interface Morador {
   nome: string
   apartamento: string
   torre: string
-  acesso?: 'Administrador' | 'Morador'
+  acesso?: 'Administrador' | 'Morador' | 'Engenharia' | 'Desenvolvedor'
   email?: string | null
   isMaster?: boolean
 }
@@ -110,10 +110,14 @@ export interface Reforma {
   observacoes?: string
   anexos?: string[] // URLs ou nomes de arquivos
   vistorias?: {
+    id?: string
     data: string
-    status: 'Aprovado' | 'Reprovado' | 'Pendente'
+    status: string
     observacoes: string
     anexos?: string[]
+    fotos?: string[]
+    usuario?: string
+    timestamp?: string
   }[]
   mensagens?: {
     id: string
@@ -432,16 +436,11 @@ export const firebaseApi = {
     // Buscar todos os registros (sem filtro) para incluir moradores e usuário mestre
     const snapshot = await getDocs(administradoresRef)
 
-    // Filtrar apenas moradores e usuários mestres (excluir administradores não-mestres)
-    return snapshot.docs
-      .map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      } as Morador))
-      .filter(morador => {
-        // Incluir se for morador OU se for usuário mestre
-        return (morador as any).acesso === 'Morador' || (morador as any).isMaster === true
-      })
+    // Retornar todos os registros para permitir gestão total no painel admin
+    return snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    } as Morador))
   },
 
   createMorador: async (moradorData: {
@@ -449,57 +448,58 @@ export const firebaseApi = {
     nome: string
     apartamento: string
     torre: string
-    acesso?: 'Administrador' | 'Morador'
+    acesso?: 'Administrador' | 'Morador' | 'Engenharia' | 'Desenvolvedor'
     email?: string | null
     isMaster?: boolean
   }): Promise<void> => {
     const { cpf, nome, apartamento, torre, acesso = 'Morador', email = null, isMaster = false } = moradorData
     const normalizedCPF = normalizeCPF(cpf)
 
-    // Validar dados
-    if (!normalizedCPF || !nome.trim() || !apartamento.trim() || !torre.trim()) {
-      throw new Error('Todos os campos obrigatórios devem ser preenchidos')
-    }
-
-    // Validar isMaster apenas para Administradores
-    if (isMaster && acesso !== 'Administrador') {
-      throw new Error('Apenas Administradores podem ser marcados como Mestre')
+    // Validar dados - Apartamento e Torre só obrigatórios para Morador
+    const isMorador = acesso === 'Morador'
+    if (!normalizedCPF || !nome.trim() || (isMorador && (!apartamento.trim() || !torre.trim()))) {
+      throw new Error(isMorador
+        ? 'CPF, Nome, Apartamento e Torre são obrigatórios para moradores comuns'
+        : 'CPF e Nome são obrigatórios')
     }
 
     const dbInstance = ensureDb()
     const administradoresRef = collection(dbInstance, 'administradores')
 
-    // Verificar se já existe por Apartamento + Torre (campos chave)
-    const qByApt = query(
-      administradoresRef,
-      where('apartamento', '==', apartamento.trim()),
-      where('torre', '==', torre.trim())
-    )
-    const snapshotApt = await getDocs(qByApt)
+    // Verificar duplicidade
+    let q
+    if (isMorador) {
+      // Para Moradores: CPF + Apartamento + Torre deve ser único (um morador pode ter múltiplos aptos, mas um apto só tem aquele vínculo)
+      // Ou melhor: Apartamento + Torre é a chave primária de moradores comuns.
+      q = query(
+        administradoresRef,
+        where('apartamento', '==', apartamento.trim()),
+        where('torre', '==', torre.trim())
+      )
+    } else {
+      // Para outros tipos: CPF + Acesso deve ser único
+      q = query(
+        administradoresRef,
+        where('cpf', '==', normalizedCPF),
+        where('acesso', '==', acesso)
+      )
+    }
+    const snapshot = await getDocs(q)
 
-    if (!snapshotApt.empty) {
-      // Se já existe, atualizar o registro existente
-      const docRef = snapshotApt.docs[0]
-      const existingData = docRef.data()
-
-      // Não atualizar se for usuário mestre
-      if (existingData.isMaster) {
-        throw new Error('Não é possível atualizar usuário mestre')
+    if (!snapshot.empty) {
+      if (isMorador) {
+        const existingData = snapshot.docs[0].data();
+        if (existingData.cpf === normalizedCPF) {
+          throw new Error('Este morador já existe nesta unidade.');
+        }
+        throw new Error('Esta unidade já possui um cadastro ativo.');
+      } else {
+        throw new Error(`Este CPF já possui um cadastro como ${acesso}.`);
       }
-
-      await updateDoc(docRef.ref, {
-        cpf: normalizedCPF,
-        nome: nome.trim(),
-        senha: `${apartamento.trim()}${torre.trim()}`,
-        acesso: acesso,
-        email: email && email.trim() ? email.trim().toLowerCase() : null,
-        data_cadastro: serverTimestamp()
-      })
-      return // Retornar sem criar novo
     }
 
     // Criar novo morador se não existir
-    const senha = `${apartamento.trim()}${torre.trim()}`
+    const senha = isMorador ? `${apartamento.trim()}${torre.trim()}` : 'Senha123456'
     await addDoc(administradoresRef, {
       cpf: normalizedCPF,
       nome: nome.trim(),
@@ -513,8 +513,16 @@ export const firebaseApi = {
     })
   },
 
-  updateMorador: async (id: string, moradorData: { cpf: string; nome: string; apartamento: string; torre: string }): Promise<void> => {
-    const { cpf, nome, apartamento, torre } = moradorData
+  updateMorador: async (id: string, moradorData: {
+    cpf: string;
+    nome: string;
+    apartamento: string;
+    torre: string;
+    acesso?: 'Administrador' | 'Morador' | 'Engenharia' | 'Desenvolvedor';
+    isMaster?: boolean;
+    email?: string | null;
+  }): Promise<void> => {
+    const { cpf, nome, apartamento, torre, acesso, isMaster, email } = moradorData
     const normalizedCPF = normalizeCPF(cpf)
 
     // Validar dados
@@ -533,11 +541,6 @@ export const firebaseApi = {
 
     const existingData = docSnap.data()
 
-    // Não permitir editar usuário mestre
-    if (existingData.isMaster) {
-      throw new Error('Não é possível editar usuário mestre')
-    }
-
     // Não permitir alterar apartamento ou torre - usar os valores existentes
     const apartamentoFinal = existingData.apartamento || apartamento.trim()
     const torreFinal = existingData.torre || torre.trim()
@@ -547,6 +550,9 @@ export const firebaseApi = {
     await updateDoc(docRef, {
       cpf: normalizedCPF,
       nome: nome.trim(),
+      email: moradorData.email || null,
+      acesso: acesso,
+      isMaster: isMaster,
       data_cadastro: serverTimestamp()
     })
   },
@@ -559,13 +565,6 @@ export const firebaseApi = {
 
     if (!docSnap.exists()) {
       throw new Error('Morador não encontrado')
-    }
-
-    const data = docSnap.data()
-
-    // Não permitir deletar usuário mestre
-    if (data.isMaster) {
-      throw new Error('Não é possível excluir usuário mestre')
     }
 
     await deleteDoc(docRef)
@@ -657,6 +656,17 @@ export const firebaseApi = {
     const dbInstance = ensureDb()
     const reformasRef = collection(dbInstance, 'reformas')
 
+    // Verificar se já existe reforma com esta ART/RRT
+    // Obs: ART pode ser opcional em alguns casos? Na interface está required.
+    // Vamos verificar apenas se foi fornecido.
+    if (reformaData.artRrt) {
+      const q = query(reformasRef, where('artRrt', '==', reformaData.artRrt.trim()))
+      const snapshot = await getDocs(q)
+      if (!snapshot.empty) {
+        throw new Error('Já existe uma reforma cadastrada com esta ART/RRT.')
+      }
+    }
+
     const docRef = await addDoc(reformasRef, {
       ...reformaData,
       status: 'Em Análise',
@@ -673,6 +683,57 @@ export const firebaseApi = {
       ...updates,
       updatedAt: serverTimestamp()
     })
+  },
+
+  deleteReforma: async (id: string): Promise<void> => {
+    const dbInstance = ensureDb()
+    const docRef = doc(dbInstance, 'reformas', id)
+
+    // Buscar a reforma para pegar os anexos antes de deletar
+    const docSnap = await getDoc(docRef)
+    if (docSnap.exists()) {
+      const data = docSnap.data() as Reforma
+      const filesToDelete: string[] = []
+
+      // Coletar anexos da reforma
+      if (data.anexos && Array.isArray(data.anexos)) {
+        filesToDelete.push(...data.anexos)
+      }
+
+      // Coletar anexos e fotos das vistorias
+      if (data.vistorias && Array.isArray(data.vistorias)) {
+        data.vistorias.forEach(vistoria => {
+          if (vistoria.anexos) filesToDelete.push(...vistoria.anexos)
+          if (vistoria.fotos) filesToDelete.push(...vistoria.fotos)
+        })
+      }
+
+      // Se houver arquivos para deletar, chamar a API
+      if (filesToDelete.length > 0) {
+        try {
+          await fetch('/api/delete-files', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ fileKeys: filesToDelete })
+          })
+        } catch (error) {
+          console.error('Erro ao excluir arquivos da reforma:', error)
+          // Não impedir a exclusão do doc se falhar a exclusão dos arquivos (opcional)
+        }
+      }
+    }
+
+    await deleteDoc(docRef)
+  },
+
+  checkArtExists: async (artRrt: string): Promise<boolean> => {
+    const dbInstance = ensureDb()
+    const reformasRef = collection(dbInstance, 'reformas')
+    const q = query(reformasRef, where('artRrt', '==', artRrt.trim()))
+    const snapshot = await getDocs(q)
+    return !snapshot.empty
   },
 
   subscribeToReforma: (id: string, onUpdate: (reforma: Reforma) => void): (() => void) => {

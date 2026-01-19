@@ -41,7 +41,7 @@ export function TopBar() {
 
 
             {/* Admin Button (only for Administradores) */}
-            {user?.acesso === 'Administrador' && (
+            {(user?.acesso === 'Administrador' || user?.acesso === 'Desenvolvedor') && (
               <button
                 onClick={() => router.push(isAdminPage ? '/pautas' : '/admin')}
                 className="inline-flex items-center gap-2 rounded-lg bg-violet-600 text-white px-4 py-2 hover:bg-violet-700 text-sm font-medium transition-colors h-9"

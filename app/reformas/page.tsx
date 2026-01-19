@@ -1,14 +1,18 @@
 'use client'
 
 import { useState, useEffect, useRef, useMemo } from 'react'
+import { useSearchParams, useRouter, usePathname } from 'next/navigation'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import { Sidebar } from '@/components/Sidebar'
 import { Footer } from '@/components/Footer'
 import { useAuth } from '@/lib/auth'
-import { api, Reforma } from '@/lib/api-config'
-import { Zap, Hammer, Paintbrush, Grid, Droplets, Wind, AppWindow, Layers, Camera, FileText, Calendar, User, Clock, Trash2, X, Plus, Image as ImageIcon } from 'lucide-react'
+import { api, Reforma, Morador } from '@/lib/api-config'
+import { Zap, Hammer, Paintbrush, Grid, Droplets, Wind, AppWindow, Layers, Camera, FileText, Calendar, User, Clock, Trash2, X, Plus, Image as ImageIcon, Download, ChevronLeft, ChevronRight, Search, Check, ChevronDown, AlertCircle } from 'lucide-react'
 import VistoriaModal from './VistoriaModal'
 import { notifyNewReformaMessage, notifyAdminsNewMessage } from '@/lib/notifications-api'
+import ReformaDetailsModalNew from './ReformaDetailsModal'
+import JSZip from 'jszip'
+import { saveAs } from 'file-saver'
 
 // Tipos para Notificação
 type NotificationType = 'success' | 'error' | 'info'
@@ -54,6 +58,7 @@ function NotificationModal({ open, type, message, onClose }: { open: boolean, ty
 export default function ReformasPage() {
     const { user } = useAuth()
     const [reformas, setReformas] = useState<Reforma[]>([])
+    const [moradores, setMoradores] = useState<Morador[]>([])
     const [loading, setLoading] = useState(true)
     const [searchTerm, setSearchTerm] = useState('')
     const [statusFilter, setStatusFilter] = useState('Todas')
@@ -63,6 +68,8 @@ export default function ReformasPage() {
     const [originalData, setOriginalData] = useState<Reforma | null>(null)
     const [saving, setSaving] = useState(false)
     const [notification, setNotification] = useState<NotificationState>({ open: false, type: 'info', message: '' })
+    const [docsExpanded, setDocsExpanded] = useState(false)
+    const [statusExpanded, setStatusExpanded] = useState(false)
 
     const showNotification = (type: NotificationType, message: string) => {
         setNotification({ open: true, type, message })
@@ -88,18 +95,71 @@ export default function ReformasPage() {
         'Hidráulica (Área Úmida/Seca)', 'Ar Condicionado', 'Envidraçamento de Sacada'
     ]
 
+    const searchParams = useSearchParams()
+    const router = useRouter()
+    const pathname = usePathname()
+
+    // Sync URL -> State (Deep Linking & Back Button)
+    useEffect(() => {
+        if (loading || reformas.length === 0) return
+
+        const artParam = searchParams.get('art')
+
+        if (artParam) {
+            // Only update if not already selected to avoid fighting with the other effect
+            if (selectedReforma?.artRrt !== artParam) {
+                const found = reformas.find(r => r.artRrt === artParam)
+                if (found) {
+                    setSelectedReforma(found)
+                }
+            }
+        } else {
+            // Only clear if currently selected to avoid redundant updates
+            if (selectedReforma) {
+                setSelectedReforma(null)
+            }
+        }
+        // We exclude selectedReforma from deps to avoid loop, we only want to react to URL/Data changes
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [searchParams, reformas, loading])
+
+    // Sync State -> URL (User Interaction)
+    useEffect(() => {
+        if (loading) return
+
+        const currentArt = searchParams.get('art')
+
+        if (selectedReforma?.artRrt) {
+            if (currentArt !== selectedReforma.artRrt) {
+                // Use replace instead of push to avoid cluttering history if rapid changes, 
+                // but push is usually better for "navigation" feel. 
+                // To avoid loop, we must be sure this only runs when USER changes state.
+                router.push(`${pathname}?art=${encodeURIComponent(selectedReforma.artRrt)}`)
+            }
+        } else {
+            if (currentArt) {
+                router.push(pathname)
+            }
+        }
+    }, [selectedReforma, pathname, router]) // Removed searchParams to avoid reacting to URL changes induced by this effect
+
     useEffect(() => {
         if (!user?.cpf) return
 
         if (api.subscribeToReformas) {
             setLoading(true)
-            const isAdmin = user.acesso === 'Administrador' || user.isMaster
+            const isAdmin = user.acesso === 'Administrador' || user.acesso === 'Engenharia' || user.acesso === 'Desenvolvedor' || user.isMaster
+
+            if (isAdmin && api.getAllMoradores) {
+                api.getAllMoradores().then(setMoradores).catch(console.error)
+            }
+
             const unsubscribe = api.subscribeToReformas(isAdmin, user.cpf, (data: Reforma[]) => {
                 // Ordenar por data de criação (mais recente primeiro)
                 data.sort((a, b) => {
-                    const dateA = a.createdAt?.seconds || 0
-                    const dateB = b.createdAt?.seconds || 0
-                    return dateB - dateA
+                    const timeA = a.updatedAt?.seconds || a.createdAt?.seconds || 0
+                    const timeB = b.updatedAt?.seconds || b.createdAt?.seconds || 0
+                    return timeB - timeA
                 })
                 setReformas(data)
                 setLoading(false)
@@ -126,7 +186,7 @@ export default function ReformasPage() {
             setLoading(true)
             let data: Reforma[] = []
 
-            if (user.acesso === 'Administrador' || user.isMaster) {
+            if (user.acesso === 'Administrador' || user.acesso === 'Engenharia' || user.acesso === 'Desenvolvedor' || user.isMaster) {
                 // Se for administrador, busca todas as reformas
                 data = await api.getReformas()
             } else {
@@ -136,9 +196,9 @@ export default function ReformasPage() {
 
             // Ordenar por data de criação (mais recente primeiro)
             data.sort((a, b) => {
-                const dateA = a.createdAt?.seconds || 0
-                const dateB = b.createdAt?.seconds || 0
-                return dateB - dateA
+                const timeA = a.updatedAt?.seconds || a.createdAt?.seconds || 0
+                const timeB = b.updatedAt?.seconds || b.createdAt?.seconds || 0
+                return timeB - timeA
             })
 
             setReformas(data)
@@ -177,6 +237,21 @@ export default function ReformasPage() {
         })
         setSelectedReforma(null)
         setShowModal(true)
+    }
+
+    const handleDeleteReforma = async (id: string) => {
+        try {
+            await api.deleteReforma(id)
+            showNotification('success', 'Reforma excluída com sucesso!')
+
+            // Reload list if not using subscription
+            if (!api.subscribeToReformas) {
+                loadReformas()
+            }
+        } catch (error: any) {
+            console.error('Erro ao excluir reforma:', error)
+            showNotification('error', 'Erro ao excluir reforma: ' + (error.message || 'Erro desconhecido'))
+        }
     }
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -255,12 +330,12 @@ export default function ReformasPage() {
             }
 
             const payload: any = {
-                moradorCpf: user.cpf,
-                moradorId: user.id,
-                moradorNome: user.nome,
-                apartamento: user.apartamento,
-                torre: user.torre,
-                email: user.email || '',
+                moradorCpf: formData.moradorCpf || user.cpf,
+                moradorId: formData.moradorId || user.id,
+                moradorNome: formData.moradorNome || user.nome,
+                apartamento: formData.apartamento || user.apartamento,
+                torre: formData.torre || user.torre,
+                email: formData.email || user.email || '',
                 telefone: '',
                 tipoObra: formData.tipoObra || 'Geral',
                 servicos: formData.servicos || [],
@@ -310,13 +385,13 @@ export default function ReformasPage() {
                 anexos: []
             })
             if (!api.subscribeToReformas) {
-                loadReformas()
+                await loadReformas()
             }
-            showNotification('success', 'Solicitação enviada com sucesso! Aguarde a análise do síndico.')
+            showNotification('success', editingReformaId ? 'Solicitação atualizada com sucesso!' : 'Solicitação enviada com sucesso!')
 
-        } catch (error) {
-            console.error(error)
-            showNotification('error', 'Erro ao enviar solicitação. Tente novamente.')
+        } catch (error: any) {
+            console.error('Erro ao salvar reforma:', error)
+            showNotification('error', error.message || 'Erro ao processar solicitação. Tente novamente.')
         } finally {
             setSaving(false)
         }
@@ -362,7 +437,7 @@ export default function ReformasPage() {
                 <div className="min-h-screen flex w-full bg-transparent">
                     <Sidebar />
                     <div className="flex-1 flex flex-col min-w-0">
-                        <div className="flex-1 w-full px-4 pt-6">
+                        <div className="flex-1 w-full px-4 pt-24 lg:pt-6">
                             <div className="w-full max-w-[1600px] mx-auto flex flex-col gap-4">
 
                                 {/* Header */}
@@ -392,66 +467,80 @@ export default function ReformasPage() {
 
                                             {/* Documentos */}
                                             <div className="pt-1 border-t border-slate-200 dark:border-slate-800">
-                                                <h4 className="font-bold text-slate-800 dark:text-white mt-3 mb-2 text-xs flex items-center gap-2">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 text-teal-500" viewBox="0 0 24 24" fill="currentColor">
-                                                        <path fillRule="evenodd" d="M5.625 1.5c-1.036 0-1.875.84-1.875 1.875v17.25c0 1.035.84 1.875 1.875 1.875h12.75c1.035 0 1.875-.84 1.875-1.875V12.75A3.75 3.75 0 0 0 16.5 9h-1.875a1.875 1.875 0 0 1-1.875-1.875V5.25A3.75 3.75 0 0 0 9 1.5H5.625ZM7.5 15a.75.75 0 0 1 .75-.75h7.5a.75.75 0 0 1 0 1.5h-7.5A.75.75 0 0 1 7.5 15Zm.75 2.25a.75.75 0 0 0 0 1.5h7.5a.75.75 0 0 0 0-1.5h-7.5Z" clipRule="evenodd" />
-                                                        <path d="M12.971 1.816A5.23 5.23 0 0 1 14.25 5.25v1.875c0 .207.168.375.375.375H16.5a5.23 5.23 0 0 1 3.434 1.279 9.768 9.768 0 0 0-6.963-6.963Z" />
-                                                    </svg>
-                                                    Documentos
-                                                </h4>
-                                                <div className="space-y-1">
-                                                    <button className="w-full flex items-center justify-between p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors text-[10px] text-slate-700 dark:text-slate-300 font-medium group">
-                                                        <span className="flex items-center gap-2">
-                                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 text-slate-400 group-hover:text-teal-500 transition-colors" viewBox="0 0 24 24" fill="currentColor">
-                                                                <path fillRule="evenodd" d="M12 2.25a.75.75 0 0 1 .75.75v11.69l3.22-3.22a.75.75 0 1 1 1.06 1.06l-4.5 4.5a.75.75 0 0 1-1.06 0l-4.5-4.5a.75.75 0 1 1 1.06-1.06l3.22 3.22V3a.75.75 0 0 1 .75-.75Zm0 15.75a.75.75 0 0 1 .75.75v2.25a.75.75 0 0 1-1.5 0v-2.25a.75.75 0 0 1 .75-.75Z" clipRule="evenodd" />
-                                                            </svg>
-                                                            Manual de Obras
-                                                        </span>
-                                                    </button>
-                                                    <button className="w-full flex items-center justify-between p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors text-[10px] text-slate-700 dark:text-slate-300 font-medium group">
-                                                        <span className="flex items-center gap-2">
-                                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 text-slate-400 group-hover:text-teal-500 transition-colors" viewBox="0 0 24 24" fill="currentColor">
-                                                                <path fillRule="evenodd" d="M12 2.25a.75.75 0 0 1 .75.75v11.69l3.22-3.22a.75.75 0 1 1 1.06 1.06l-4.5 4.5a.75.75 0 0 1-1.06 0l-4.5-4.5a.75.75 0 1 1 1.06-1.06l3.22 3.22V3a.75.75 0 0 1 .75-.75Zm0 15.75a.75.75 0 0 1 .75.75v2.25a.75.75 0 0 1-1.5 0v-2.25a.75.75 0 0 1 .75-.75Z" clipRule="evenodd" />
-                                                            </svg>
-                                                            Termo de Resp.
-                                                        </span>
-                                                    </button>
-                                                </div>
+                                                <button
+                                                    onClick={() => setDocsExpanded(!docsExpanded)}
+                                                    className="w-full flex items-center justify-between py-3 px-1 group"
+                                                >
+                                                    <h4 className="font-bold text-slate-800 dark:text-white text-xs flex items-center gap-2">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-teal-500" viewBox="0 0 24 24" fill="currentColor">
+                                                            <path fillRule="evenodd" d="M5.625 1.5c-1.036 0-1.875.84-1.875 1.875v17.25c0 1.035.84 1.875 1.875 1.875h12.75c1.035 0 1.875-.84 1.875-1.875V12.75A3.75 3.75 0 0 0 16.5 9h-1.875a1.875 1.875 0 0 1-1.875-1.875V5.25A3.75 3.75 0 0 0 9 1.5H5.625ZM7.5 15a.75.75 0 0 1 .75-.75h7.5a.75.75 0 0 1 0 1.5h-7.5A.75.75 0 0 1 7.5 15Zm.75 2.25a.75.75 0 0 0 0 1.5h7.5a.75.75 0 0 0 0-1.5h-7.5Z" clipRule="evenodd" />
+                                                            <path d="M12.971 1.816A5.23 5.23 0 0 1 14.25 5.25v1.875c0 .207.168.375.375.375H16.5a5.23 5.23 0 0 1 3.434 1.279 9.768 9.768 0 0 0-6.963-6.963Z" />
+                                                        </svg>
+                                                        Documentos
+                                                    </h4>
+                                                    <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-300 ${docsExpanded ? 'rotate-180' : ''}`} />
+                                                </button>
+
+                                                {docsExpanded && (
+                                                    <div className="space-y-1.5 pb-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                                                        <button className="w-full h-11 flex items-center justify-between px-3 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all text-xs text-slate-700 dark:text-slate-300 font-bold group border border-slate-200/50 dark:border-slate-700/50">
+                                                            <span className="flex items-center gap-2.5">
+                                                                <Download className="h-4 w-4 text-slate-400 group-hover:text-teal-500 transition-colors" />
+                                                                Manual de Obras
+                                                            </span>
+                                                        </button>
+                                                        <button className="w-full h-11 flex items-center justify-between px-3 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all text-xs text-slate-700 dark:text-slate-300 font-bold group border border-slate-200/50 dark:border-slate-700/50">
+                                                            <span className="flex items-center gap-2.5">
+                                                                <Download className="h-4 w-4 text-slate-400 group-hover:text-teal-500 transition-colors" />
+                                                                Termo de Resp.
+                                                            </span>
+                                                        </button>
+                                                    </div>
+                                                )}
                                             </div>
 
                                             {/* Filtro Status */}
-                                            <div className="pt-3 border-t border-slate-200 dark:border-slate-800 flex flex-col">
-                                                <h4 className="font-bold text-slate-800 dark:text-white mb-2 text-xs flex items-center gap-2 flex-shrink-0">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 text-teal-500" viewBox="0 0 24 24" fill="currentColor">
-                                                        <path fillRule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12ZM12 8.25a.75.75 0 0 1 .75.75v3.75a.75.75 0 0 1-1.5 0V9a.75.75 0 0 1 .75-.75Zm0 8.25a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Z" clipRule="evenodd" />
-                                                    </svg>
-                                                    Status da Solicitação
-                                                </h4>
-                                                <div className="flex flex-col gap-0.5">
-                                                    {['Todas', 'Em Análise', 'Aprovado', 'Reprovado', 'Aguardando Vistoria', 'Vistoria Aprovada', 'Vistoria Reprovada', 'Concluído'].map((status) => (
-                                                        <label key={status} className={`flex items-center gap-2 p-1.5 rounded-lg cursor-pointer transition-colors group ${statusFilter === status ? 'bg-slate-100 dark:bg-slate-800' : 'hover:bg-slate-50 dark:hover:bg-slate-800'}`}>
-                                                            <div className={`w-3 h-3 rounded-full border flex items-center justify-center flex-shrink-0 ${statusFilter === status ? 'border-teal-500' : 'border-slate-400 dark:border-slate-600'}`}>
-                                                                {statusFilter === status && <div className="w-1.5 h-1.5 rounded-full bg-teal-500"></div>}
-                                                            </div>
-                                                            <div className="flex-1 flex justify-between items-center min-w-0">
-                                                                <span className={`text-[10px] font-medium truncate ${statusFilter === status ? 'text-teal-600 dark:text-teal-400' : 'text-slate-600 dark:text-slate-400'}`}>{status}</span>
-                                                                {(statusCounts[status] || 0) > 0 && (
-                                                                    <span className={`text-[10px] font-bold transition-colors ${statusFilter === status ? 'text-teal-500' : 'text-slate-400 dark:text-slate-500'}`}>
-                                                                        {statusCounts[status]}
-                                                                    </span>
-                                                                )}
-                                                            </div>
-                                                            <input
-                                                                type="radio"
-                                                                name="status"
-                                                                value={status}
-                                                                checked={statusFilter === status}
-                                                                onChange={(e) => setStatusFilter(e.target.value)}
-                                                                className="hidden"
-                                                            />
-                                                        </label>
-                                                    ))}
-                                                </div>
+                                            <div className="pt-2 border-t border-slate-200 dark:border-slate-800 flex flex-col">
+                                                <button
+                                                    onClick={() => setStatusExpanded(!statusExpanded)}
+                                                    className="w-full flex items-center justify-between py-3 px-1 group"
+                                                >
+                                                    <h4 className="font-bold text-slate-800 dark:text-white text-xs flex items-center gap-2">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-teal-500" viewBox="0 0 24 24" fill="currentColor">
+                                                            <path fillRule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12ZM12 8.25a.75.75 0 0 1 .75.75v3.75a.75.75 0 0 1-1.5 0V9a.75.75 0 0 1 .75-.75Zm0 8.25a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Z" clipRule="evenodd" />
+                                                        </svg>
+                                                        Status da Solicitação
+                                                    </h4>
+                                                    <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-300 ${statusExpanded ? 'rotate-180' : ''}`} />
+                                                </button>
+
+                                                {statusExpanded && (
+                                                    <div className="flex flex-col gap-1 pb-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                                                        {['Todas', 'Em Análise', 'Aprovado', 'Reprovado', 'Aguardando Vistoria', 'Vistoria Aprovada', 'Vistoria Reprovada', 'Concluído'].map((status) => (
+                                                            <label key={status} className={`flex items-center gap-2.5 p-2 rounded-xl cursor-pointer transition-all group ${statusFilter === status ? 'bg-teal-500/10 dark:bg-teal-500/10 border border-teal-500/20' : 'hover:bg-slate-100 dark:hover:bg-slate-800/50 border border-transparent'}`}>
+                                                                <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all ${statusFilter === status ? 'border-teal-500' : 'border-slate-300 dark:border-slate-700 group-hover:border-slate-400'}`}>
+                                                                    {statusFilter === status && <div className="w-1.5 h-1.5 rounded-full bg-teal-500"></div>}
+                                                                </div>
+                                                                <div className="flex-1 flex justify-between items-center min-w-0">
+                                                                    <span className={`text-[11px] font-bold truncate ${statusFilter === status ? 'text-teal-600 dark:text-teal-400' : 'text-slate-600 dark:text-slate-400'}`}>{status}</span>
+                                                                    {(statusCounts[status] || 0) > 0 && (
+                                                                        <span className={`text-[11px] font-black transition-colors ${statusFilter === status ? 'text-teal-500' : 'text-slate-400 dark:text-slate-500'}`}>
+                                                                            {statusCounts[status]}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                                <input
+                                                                    type="radio"
+                                                                    name="status"
+                                                                    value={status}
+                                                                    checked={statusFilter === status}
+                                                                    onChange={(e) => setStatusFilter(e.target.value)}
+                                                                    className="hidden"
+                                                                />
+                                                            </label>
+                                                        ))}
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
                                     </div>
@@ -493,26 +582,77 @@ export default function ReformasPage() {
                                                                 <div className="flex justify-between items-center mb-2 gap-4">
                                                                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 min-w-0">
                                                                         <h3 className="font-bold text-slate-800 dark:text-white text-[13px] whitespace-nowrap">ART: {reforma.artRrt || 'Não informado'}</h3>
-                                                                        <p className="text-[11px] text-slate-500 truncate">
-                                                                            {reforma.moradorNome} - Apt {reforma.apartamento} • Início: {reforma.dataInicio}
-                                                                        </p>
+                                                                        <div className="flex items-center gap-2">
+                                                                            <p className="text-[11px] text-slate-500 truncate">
+                                                                                {reforma.moradorNome} - Apt {reforma.apartamento} • Início: {reforma.dataInicio}
+                                                                            </p>
+                                                                            {reforma.dataFim && (
+                                                                                <div className="flex items-center gap-1.5 ml-1 pl-2 border-l border-slate-200 dark:border-slate-800">
+                                                                                    <Clock className="w-3 h-3 text-teal-500" />
+                                                                                    <p className="text-[10px] font-bold text-slate-600 dark:text-slate-400">
+                                                                                        Fim: {reforma.dataFim}
+                                                                                        {(() => {
+                                                                                            const today = new Date();
+                                                                                            today.setHours(0, 0, 0, 0);
+                                                                                            const end = new Date(reforma.dataFim + 'T00:00:00');
+                                                                                            const diff = end.getTime() - today.getTime();
+                                                                                            const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
+
+                                                                                            if (days < 0) return <span className="ml-1 text-red-500">(Atrasada)</span>;
+                                                                                            if (days === 0) return <span className="ml-1 text-amber-500">(Termina hoje)</span>;
+                                                                                            return <span className="ml-1 text-teal-500">({days} dias restantes)</span>;
+                                                                                        })()}
+                                                                                    </p>
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
                                                                         <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider 
-                                                                     ${reforma.status === 'Aprovado' || reforma.status === 'Vistoria Aprovada' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400' :
-                                                                                reforma.status === 'Reprovado' || reforma.status === 'Vistoria Reprovada' ? 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400' :
-                                                                                    reforma.status === 'Concluído' ? 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400' :
-                                                                                        reforma.status === 'Aguardando Vistoria' ? 'bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-400' :
-                                                                                            'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400'}`}>
+                                                                             ${reforma.status?.toLowerCase().includes('reprovad') ? 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400' :
+                                                                                reforma.status?.toLowerCase().includes('aprovad') ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400' :
+                                                                                    reforma.status?.toLowerCase().includes('concluíd') ? 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400' :
+                                                                                        reforma.status?.toLowerCase().includes('vistoria') || reforma.status?.toLowerCase().includes('agendada') ? 'bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-400' :
+                                                                                            reforma.status?.toLowerCase().includes('análise') ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400' :
+                                                                                                'bg-slate-100 text-slate-700 dark:bg-slate-500/20 dark:text-slate-400'}`}>
                                                                             {reforma.status}
                                                                         </span>
                                                                     </div>
-                                                                    <div className="text-right flex-shrink-0 min-w-fit">
-                                                                        <p className="text-[10px] text-slate-400 leading-tight">Solicitado em</p>
-                                                                        <p className="text-[10px] font-medium text-slate-600 dark:text-slate-300">
-                                                                            {reforma.createdAt?.seconds ? new Date(reforma.createdAt.seconds * 1000).toLocaleString('pt-BR', {
-                                                                                day: '2-digit', month: '2-digit', year: 'numeric',
-                                                                                hour: '2-digit', minute: '2-digit'
-                                                                            }) : 'Hoje'}
-                                                                        </p>
+
+                                                                    {/* Delete button only for Desenvolvedor */}
+                                                                    {user?.acesso === 'Desenvolvedor' && (
+                                                                        <button
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation()
+                                                                                if (confirm('Tem certeza que deseja excluir esta reforma? Esta ação não pode ser desfeita.')) {
+                                                                                    handleDeleteReforma(reforma.id!)
+                                                                                }
+                                                                            }}
+                                                                            className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
+                                                                            title="Excluir Reforma (Apenas Desenvolvedor)"
+                                                                        >
+                                                                            <Trash2 className="w-4 h-4" />
+                                                                        </button>
+                                                                    )}
+                                                                    <div className="text-right flex-shrink-0 min-w-fit flex flex-col gap-0.5">
+                                                                        <div className="flex items-center justify-end gap-1.5">
+                                                                            <span className="text-[10px] font-black text-slate-400">S |</span>
+                                                                            <p className="text-[10px] font-bold text-slate-600 dark:text-slate-300">
+                                                                                {reforma.createdAt?.seconds ? new Date(reforma.createdAt.seconds * 1000).toLocaleString('pt-BR', {
+                                                                                    day: '2-digit', month: '2-digit', year: 'numeric',
+                                                                                    hour: '2-digit', minute: '2-digit'
+                                                                                }) : '---'}
+                                                                            </p>
+                                                                        </div>
+                                                                        {reforma.updatedAt && reforma.updatedAt?.seconds !== reforma.createdAt?.seconds && (
+                                                                            <div className="flex items-center justify-end gap-1.5 border-t border-slate-100 dark:border-slate-800/50 pt-0.5">
+                                                                                <span className="text-[10px] font-black text-teal-500/70">A |</span>
+                                                                                <p className="text-[10px] font-bold text-teal-600 dark:text-teal-400">
+                                                                                    {new Date(reforma.updatedAt.seconds * 1000).toLocaleString('pt-BR', {
+                                                                                        day: '2-digit', month: '2-digit', year: 'numeric',
+                                                                                        hour: '2-digit', minute: '2-digit'
+                                                                                    })}
+                                                                                </p>
+                                                                            </div>
+                                                                        )}
                                                                     </div>
                                                                 </div>
 
@@ -534,12 +674,14 @@ export default function ReformasPage() {
                                                                     })}
                                                                 </div>
 
-                                                                {reforma.observacoes && (
-                                                                    <div className="bg-slate-50 dark:bg-slate-900/50 p-3 rounded-lg border border-slate-100 dark:border-slate-800 text-xs mb-3">
-                                                                        <p className="font-semibold text-slate-700 dark:text-slate-300 mb-0.5">Observações do Síndico:</p>
-                                                                        <p className="text-slate-600 dark:text-slate-400">{reforma.observacoes}</p>
-                                                                    </div>
-                                                                )}
+                                                                {
+                                                                    reforma.observacoes && (
+                                                                        <div className="bg-slate-50 dark:bg-slate-900/50 p-3 rounded-lg border border-slate-100 dark:border-slate-800 text-xs mb-3">
+                                                                            <p className="font-semibold text-slate-700 dark:text-slate-300 mb-0.5">Observações do Síndico:</p>
+                                                                            <p className="text-slate-600 dark:text-slate-400">{reforma.observacoes}</p>
+                                                                        </div>
+                                                                    )
+                                                                }
                                                             </div>
                                                         ))}
                                                     </div>
@@ -567,43 +709,85 @@ export default function ReformasPage() {
                             <Footer />
                         </div>
                     </div>
-                </div>
-            </div>
+                </div >
+            </div >
 
-            {showModal && (
-                <ModalNovaSolicitacao
-                    onClose={() => {
-                        setShowModal(false)
-                        setEditingReformaId(null)
-                    }}
-                    onSubmit={handleSubmit}
-                    saving={saving}
-                    formData={formData}
-                    setFormData={setFormData}
-                    handleServiceChange={handleServiceChange}
-                    user={user}
-                    showNotification={showNotification}
-                    isEditing={!!editingReformaId}
-                />
-            )}
+            {
+                showModal && (
+                    <ModalNovaSolicitacao
+                        onClose={() => {
+                            setShowModal(false)
+                            setEditingReformaId(null)
+                        }}
+                        onSubmit={handleSubmit}
+                        saving={saving}
+                        formData={formData}
+                        setFormData={setFormData}
+                        handleServiceChange={handleServiceChange}
+                        user={user}
+                        moradores={moradores}
+                        showNotification={showNotification}
+                        isEditing={!!editingReformaId}
+                    />
+                )
+            }
 
-            {selectedReforma && (
-                <ModalDetalhesReforma
-                    reforma={selectedReforma}
-                    onClose={() => setSelectedReforma(null)}
-                    onUpdate={loadReformas}
-                    onEdit={handleEditReforma}
-                    user={user}
-                    showNotification={showNotification}
-                />
-            )}
-        </ProtectedRoute>
+            {
+                selectedReforma && (
+                    <ReformaDetailsModalNew
+                        reforma={selectedReforma}
+                        onClose={() => setSelectedReforma(null)}
+                        onUpdate={loadReformas}
+                        onEdit={handleEditReforma}
+                        user={user}
+                        showNotification={showNotification}
+                    />
+                )
+            }
+        </ProtectedRoute >
     )
 }
 
-function ModalNovaSolicitacao({ onClose, onSubmit, saving, formData, setFormData, handleServiceChange, user, showNotification, isEditing }: any) {
+function ModalNovaSolicitacao({ onClose, onSubmit, saving, formData, setFormData, handleServiceChange, user, moradores = [], showNotification, isEditing }: any) {
+    const isAdmin = user?.acesso === 'Administrador' || user?.isMaster
     const [activeSection, setActiveSection] = useState('detalhes')
     const [uploading, setUploading] = useState(false)
+    const [artError, setArtError] = useState('')
+
+    // Searchable Select State
+    const [searchTerm, setSearchTerm] = useState('')
+    const [dropdownOpen, setDropdownOpen] = useState(false)
+    const dropdownRef = useRef<HTMLDivElement>(null)
+
+    // Click outside to close dropdown
+    useEffect(() => {
+        function handleClickOutside(event: MouseEvent) {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+                setDropdownOpen(false)
+            }
+        }
+        document.addEventListener("mousedown", handleClickOutside)
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside)
+        }
+    }, [])
+
+    const filteredMoradores = moradores
+        .filter((m: any) => {
+            if (!searchTerm) return true
+            const searchLower = searchTerm.toLowerCase()
+            return (
+                m.nome.toLowerCase().includes(searchLower) ||
+                m.apartamento.includes(searchLower) ||
+                m.torre.toLowerCase().includes(searchLower)
+            )
+        })
+        .sort((a: any, b: any) => {
+            const aptA = parseInt(a.apartamento) || 0;
+            const aptB = parseInt(b.apartamento) || 0;
+            if (aptA !== aptB) return aptA - aptB;
+            return a.torre.localeCompare(b.torre);
+        })
 
     const validateStep = (sectionId: string) => {
         if (sectionId === 'detalhes') {
@@ -717,31 +901,30 @@ function ModalNovaSolicitacao({ onClose, onSubmit, saving, formData, setFormData
     ]
 
     return (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[100] p-2 md:p-4 font-sans">
-            <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-4xl h-[90vh] max-h-[650px] shadow-2xl border border-slate-200 dark:border-slate-800 flex overflow-hidden">
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center z-[110] md:p-6 p-0 font-sans animate-fadeIn">
+            <div className="bg-white dark:bg-slate-900 w-full md:max-w-4xl h-full md:h-[90vh] md:max-h-[750px] md:rounded-[32px] shadow-2xl border-x md:border border-slate-200 dark:border-slate-800 flex flex-col md:flex-row overflow-hidden relative">
 
-                {/* Sidebar */}
-                <div className="w-1/4 min-w-[180px] bg-slate-50 dark:bg-slate-900/50 border-r border-slate-200 dark:border-slate-800 p-3 flex flex-col">
-                    <div className="mb-4 px-2">
-                        <h3 className="text-lg font-bold text-slate-800 dark:text-white leading-tight">
+                {/* Sidebar / Stepper */}
+                <div className="w-full md:w-1/4 md:min-w-[240px] bg-slate-50 dark:bg-slate-950/50 border-b md:border-b-0 md:border-r border-slate-200 dark:border-slate-800 p-4 md:p-8 flex flex-col shrink-0">
+                    <div className="mb-4 md:mb-8">
+                        <h3 className="text-xl font-black text-slate-800 dark:text-white leading-tight">
                             {isEditing ? 'Editar Solicitação' : 'Nova Solicitação'}
                         </h3>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                            {isEditing ? 'Atualize os dados da reforma' : 'Preencha os dados da reforma'}
+                        <p className="text-[10px] font-bold text-teal-500 uppercase tracking-widest mt-1">
+                            {isEditing ? 'Atualize os dados' : 'Passo a Passo'}
                         </p>
                     </div>
 
-                    <nav className="flex-1 space-y-1">
+                    <nav className="flex md:flex-col gap-1 md:gap-3 overflow-x-auto no-scrollbar scroll-smooth">
                         {sections.map((section) => (
                             <button
                                 key={section.id}
+                                type="button"
                                 onClick={() => {
                                     const targetIndex = sections.findIndex(s => s.id === section.id)
                                     const currentIndex = sections.findIndex(s => s.id === activeSection)
 
                                     if (targetIndex > currentIndex) {
-                                        // Tentando avançar: valida passo a passo
-                                        let tempSection = activeSection
                                         let canMove = true
                                         for (let i = currentIndex; i < targetIndex; i++) {
                                             if (!validateStep(sections[i].id)) {
@@ -751,38 +934,144 @@ function ModalNovaSolicitacao({ onClose, onSubmit, saving, formData, setFormData
                                         }
                                         if (canMove) setActiveSection(section.id)
                                     } else {
-                                        // Voltando: sempre permitido
                                         setActiveSection(section.id)
                                     }
                                 }}
-                                className={`w-full flex items-center gap-3 px-3 py-2.5 text-xs font-medium rounded-lg transition-all ${activeSection === section.id
-                                    ? 'bg-teal-50 dark:bg-teal-500/10 text-teal-600 dark:text-teal-500 shadow-sm ring-1 ring-teal-200 dark:ring-teal-500/20'
-                                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                                className={`flex-1 md:flex-none flex items-center gap-2 md:gap-4 px-3 md:px-5 py-2.5 md:py-4 text-[10px] md:text-xs font-bold uppercase md:capitalize tracking-wider md:tracking-normal rounded-xl transition-all duration-300 shrink-0 ${activeSection === section.id
+                                    ? 'bg-teal-600 md:bg-teal-500/10 text-white md:text-teal-600 dark:text-teal-400 shadow-lg shadow-teal-600/20 md:shadow-none'
+                                    : 'text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'
                                     }`}
                             >
-                                <span className={activeSection === section.id ? 'text-teal-600 dark:text-teal-500' : 'text-slate-400'}>
+                                <span className={activeSection === section.id ? 'text-white md:text-teal-600 dark:text-teal-400' : 'text-slate-400'}>
                                     {section.icon}
                                 </span>
-                                {section.label}
+                                <span className="hidden sm:inline-block">{section.label}</span>
+                                <span className="sm:hidden">{sections.findIndex(s => s.id === section.id) + 1}</span>
                             </button>
                         ))}
                     </nav>
 
-                    <div className="pt-4 border-t border-slate-200 dark:border-slate-800 mt-auto">
-                        <button onClick={onClose} className="w-full flex items-center justify-center gap-2 px-3 py-2 text-xs font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 transition-colors">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                            Cancelar
-                        </button>
+                    <div className="hidden md:block pt-8 border-t border-slate-200 dark:border-slate-800 mt-auto opacity-50">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Portal de Reformas</p>
+                        <p className="text-[10px] text-slate-500 mt-1">Preencha cada etapa com atenção.</p>
                     </div>
                 </div>
 
-                {/* Content Area */}
-                <div className="flex-1 flex flex-col min-w-0 bg-white dark:bg-slate-900">
-                    <div className="flex-1 overflow-y-auto p-4 md:p-6 custom-scrollbar">
-                        <form id="reformaForm" onSubmit={onSubmit} className="space-y-6">
+                <div className="flex-1 flex flex-col min-w-0 bg-white dark:bg-slate-900 overflow-hidden">
+                    {/* Desktop Close Button */}
+                    <button
+                        onClick={onClose}
+                        className="hidden md:flex absolute top-8 right-8 p-3 bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white rounded-2xl transition-all z-20"
+                    >
+                        <X className="w-5 h-5" />
+                    </button>
+
+                    <div className="flex-1 overflow-y-auto custom-scrollbar p-6 md:p-12">
+                        <form id="reformaForm" onSubmit={onSubmit} className="max-w-2xl mx-auto space-y-10">
+                            {/* Inner form content remains largely the same, but wrapped in a container */}
 
                             {activeSection === 'detalhes' && (
                                 <div className="space-y-6 animate-fadeIn">
+
+                                    {isAdmin && !isEditing && (
+                                        <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800 relative z-20">
+                                            <label className="block text-xs font-bold uppercase text-slate-500 dark:text-slate-400 mb-2">
+                                                Selecione o Morador (Administrativo)
+                                            </label>
+
+                                            <div className="relative" ref={dropdownRef}>
+                                                <div className="relative">
+                                                    <input
+                                                        type="text"
+                                                        value={searchTerm}
+                                                        onChange={(e) => {
+                                                            setSearchTerm(e.target.value)
+                                                            setDropdownOpen(true)
+                                                            if (!e.target.value) {
+                                                                // Clear selection if input is cleared manually? 
+                                                                // Optional: setFormData({...formData, moradorId: '' ...})
+                                                            }
+                                                        }}
+                                                        onFocus={() => setDropdownOpen(true)}
+                                                        placeholder="Buscar por nome, apartamento ou torre..."
+                                                        className="w-full pl-10 pr-10 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium text-slate-700 dark:text-slate-200 focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-none transition-all placeholder:text-slate-400"
+                                                    />
+                                                    <Search className="absolute left-3 top-3.5 w-4 h-4 text-slate-400 pointer-events-none" />
+
+                                                    {/* Clear or Dropdown Icon */}
+                                                    {searchTerm || formData.moradorId ? (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                setSearchTerm('')
+                                                                setFormData({
+                                                                    ...formData,
+                                                                    moradorId: '',
+                                                                    moradorNome: '',
+                                                                    moradorCpf: '',
+                                                                    apartamento: '',
+                                                                    torre: '',
+                                                                    email: ''
+                                                                })
+                                                                setDropdownOpen(false)
+                                                            }}
+                                                            className="absolute right-3 top-3.5 text-slate-400 hover:text-red-500 transition-colors"
+                                                        >
+                                                            <X className="w-4 h-4" />
+                                                        </button>
+                                                    ) : (
+                                                        <ChevronDown className="absolute right-3 top-3.5 w-4 h-4 text-slate-400 pointer-events-none" />
+                                                    )}
+                                                </div>
+
+                                                {dropdownOpen && (
+                                                    <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl max-h-60 overflow-y-auto z-50 custom-scrollbar animate-fadeIn">
+                                                        {filteredMoradores.length > 0 ? (
+                                                            filteredMoradores.map((m: any) => {
+                                                                const label = `Apt ${m.apartamento} - Torre ${m.torre} | ${m.nome}`
+                                                                const isSelected = formData.moradorId === m.id
+
+                                                                return (
+                                                                    <button
+                                                                        key={m.id}
+                                                                        type="button"
+                                                                        onClick={() => {
+                                                                            setFormData({
+                                                                                ...formData,
+                                                                                moradorId: m.id,
+                                                                                moradorNome: m.nome,
+                                                                                moradorCpf: m.cpf,
+                                                                                apartamento: m.apartamento,
+                                                                                torre: m.torre,
+                                                                                email: m.email
+                                                                            })
+                                                                            setSearchTerm(label)
+                                                                            setDropdownOpen(false)
+                                                                        }}
+                                                                        className={`w-full text-left px-4 py-3 text-sm flex items-center justify-between border-b last:border-0 border-slate-50 dark:border-slate-800/50 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors ${isSelected ? 'bg-teal-50 dark:bg-teal-900/10 text-teal-700 dark:text-teal-400 font-bold' : 'text-slate-600 dark:text-slate-300'}`}
+                                                                    >
+                                                                        <span>
+                                                                            <span className="font-bold text-slate-800 dark:text-slate-200">Apt {m.apartamento}</span>
+                                                                            <span className="text-slate-400 mx-2">•</span>
+                                                                            Torre {m.torre}
+                                                                            <span className="text-slate-400 mx-2">|</span>
+                                                                            {m.nome}
+                                                                        </span>
+                                                                        {isSelected && <Check className="w-4 h-4 text-teal-600" />}
+                                                                    </button>
+                                                                )
+                                                            })
+                                                        ) : (
+                                                            <div className="px-4 py-4 text-center text-slate-500 dark:text-slate-400 text-sm italic">
+                                                                Nenhum morador encontrado.
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+
                                     <div>
                                         <h4 className="text-lg font-bold text-slate-800 dark:text-white mb-1">Detalhes da Obra</h4>
                                         <p className="text-sm text-slate-500 dark:text-slate-400">Especifique o tipo e período da reforma.</p>
@@ -869,13 +1158,35 @@ function ModalNovaSolicitacao({ onClose, onSubmit, saving, formData, setFormData
                                             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Número ART / RRT</label>
                                             <input
                                                 type="text"
-                                                className="w-full rounded-lg border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm py-2.5 px-3 focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all placeholder:text-slate-400"
+                                                className={`w-full rounded-lg border bg-white dark:bg-slate-800 text-sm py-2.5 px-3 focus:ring-2 transition-all placeholder:text-slate-400 ${artError
+                                                    ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20'
+                                                    : 'border-slate-200 dark:border-slate-700 focus:ring-teal-500/20 focus:border-teal-500'
+                                                    }`}
                                                 value={formData.artRrt}
-                                                onChange={(e) => setFormData({ ...formData, artRrt: e.target.value })}
+                                                onChange={(e) => {
+                                                    setFormData({ ...formData, artRrt: e.target.value })
+                                                    if (artError) setArtError('') // Clear error on typing
+                                                }}
+                                                onBlur={async (e) => {
+                                                    const val = e.target.value
+                                                    if (val && api.checkArtExists) {
+                                                        const exists = await api.checkArtExists(val)
+                                                        if (exists) {
+                                                            setArtError('Esta ART/RRT já está cadastrada no sistema.')
+                                                        }
+                                                    }
+                                                }}
                                                 placeholder="Ex: 12345678-9"
                                                 required
                                             />
-                                            <p className="text-[10px] text-slate-400 mt-1">A Anotação de Responsabilidade Técnica é obrigatória.</p>
+                                            {artError ? (
+                                                <p className="text-xs text-red-500 mt-1 font-bold flex items-center gap-1">
+                                                    <AlertCircle className="w-3 h-3" />
+                                                    {artError}
+                                                </p>
+                                            ) : (
+                                                <p className="text-[10px] text-slate-400 mt-1">A Anotação de Responsabilidade Técnica é obrigatória.</p>
+                                            )}
                                         </div>
 
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -979,16 +1290,25 @@ function ModalNovaSolicitacao({ onClose, onSubmit, saving, formData, setFormData
                     </div>
 
                     {/* Footer Actions */}
-                    <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 flex justify-between items-center">
-                        <div className="text-xs text-slate-400 hidden sm:block">
-                            Passo {sections.findIndex(s => s.id === activeSection) + 1} de {sections.length}
+                    <div className="p-4 md:p-8 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/50 flex justify-between items-center shrink-0">
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            className="flex md:hidden items-center gap-2 text-[10px] font-black uppercase tracking-widest text-red-500"
+                        >
+                            <X className="w-3 h-3" /> Cancelar
+                        </button>
+
+                        <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest hidden sm:block">
+                            Etapa {sections.findIndex(s => s.id === activeSection) + 1} / {sections.length}
                         </div>
-                        <div className="flex gap-3 ml-auto">
+
+                        <div className="flex gap-3">
                             {sections.findIndex(s => s.id === activeSection) > 0 && (
                                 <button
                                     type="button"
                                     onClick={() => setActiveSection(sections[sections.findIndex(s => s.id === activeSection) - 1].id)}
-                                    className="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-lg text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+                                    className="px-5 py-3 md:px-8 md:py-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-50 dark:hover:bg-slate-700 transition-all"
                                 >
                                     Voltar
                                 </button>
@@ -1002,7 +1322,7 @@ function ModalNovaSolicitacao({ onClose, onSubmit, saving, formData, setFormData
                                         e.preventDefault()
                                         handleNext()
                                     }}
-                                    className="px-6 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-lg text-sm font-bold hover:opacity-90 transition-opacity"
+                                    className="px-8 py-3 md:px-12 md:py-4 bg-teal-600 hover:bg-teal-700 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-teal-600/20 active:scale-95 transition-all"
                                 >
                                     Próximo
                                 </button>
@@ -1012,10 +1332,10 @@ function ModalNovaSolicitacao({ onClose, onSubmit, saving, formData, setFormData
                                     type="submit"
                                     form="reformaForm"
                                     disabled={saving || uploading}
-                                    className="px-6 py-2 bg-gradient-to-r from-cyan-600 to-amber-600 hover:from-cyan-700 hover:to-amber-700 text-white rounded-lg text-sm font-bold shadow-lg shadow-teal-500/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transform active:scale-95 transition-all"
+                                    className="px-8 py-3 md:px-12 md:py-4 bg-teal-600 hover:bg-teal-700 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-teal-600/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 active:scale-95 transition-all"
                                 >
-                                    {(saving || uploading) && <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>}
-                                    {uploading ? 'Enviando Arquivos...' : (isEditing ? 'Atualizar Solicitação' : 'Finalizar Solicitação')}
+                                    {(saving || uploading) && <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" src="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>}
+                                    {uploading ? 'Enviando...' : (isEditing ? 'Atualizar' : 'Finalizar')}
                                 </button>
                             )}
                         </div>
@@ -1176,6 +1496,31 @@ function ModalDetalhesReforma({ reforma, onClose, onUpdate, onEdit, user, showNo
             showNotification('error', 'Erro ao excluir vistoria')
         } finally {
             setStatusLoading(false)
+        }
+    }
+
+    const handleDownloadImages = async (vistoria: any, index: number) => {
+        if (!vistoria.fotos || vistoria.fotos.length === 0) return
+
+        try {
+            const zip = new JSZip()
+            const folder = zip.folder(`vistoria_${new Date(vistoria.data).toISOString().split('T')[0]}_${index + 1}`)
+
+            const downloadPromises = vistoria.fotos.map(async (fotoUrl: string, idx: number) => {
+                const response = await fetch(getImageUrl(fotoUrl))
+                const blob = await response.blob()
+                const extension = blob.type.split('/')[1] || 'jpg'
+                folder?.file(`foto_${idx + 1}.${extension}`, blob)
+            })
+
+            await Promise.all(downloadPromises)
+
+            const content = await zip.generateAsync({ type: 'blob' })
+            saveAs(content, `vistoria_${reforma.apartamento}_${reforma.torre}_${new Date(vistoria.data).toISOString().split('T')[0]}.zip`)
+            showNotification('success', 'Download iniciado!')
+        } catch (error) {
+            console.error('Erro ao baixar imagens:', error)
+            showNotification('error', 'Erro ao preparar download das imagens')
         }
     }
 
@@ -1612,16 +1957,53 @@ function ModalDetalhesReforma({ reforma, onClose, onUpdate, onEdit, user, showNo
                                                     </div>
 
                                                     {vistoria.fotos && vistoria.fotos.length > 0 && (
-                                                        <div className="grid grid-cols-5 gap-2 mt-3">
-                                                            {vistoria.fotos.map((foto: string, fIdx: number) => (
+                                                        <div className="mt-3">
+                                                            <div className="flex justify-between items-end mb-2 px-1">
+                                                                <span className="text-[10px] uppercase font-bold text-slate-400">
+                                                                    {vistoria.fotos.length} {vistoria.fotos.length === 1 ? 'Foto' : 'Fotos'}
+                                                                </span>
                                                                 <button
-                                                                    key={fIdx}
-                                                                    onClick={() => setActiveLightbox({ photos: vistoria.fotos, index: fIdx })}
-                                                                    className="aspect-square rounded-lg overflow-hidden border border-slate-100 dark:border-slate-700 hover:ring-2 hover:ring-teal-500/50 transition-all"
+                                                                    onClick={() => handleDownloadImages(vistoria, idx)}
+                                                                    className="text-[10px] text-teal-600 dark:text-teal-400 hover:underline flex items-center gap-1 font-bold"
                                                                 >
-                                                                    <img src={getImageUrl(foto)} alt="" className="w-full h-full object-cover" />
+                                                                    <Download className="w-3 h-3" />
+                                                                    Baixar Todas
                                                                 </button>
-                                                            ))}
+                                                            </div>
+                                                            <div className="relative group/carousel">
+                                                                <button
+                                                                    onClick={(e) => {
+                                                                        const container = e.currentTarget.nextElementSibling
+                                                                        if (container) container.scrollBy({ left: -200, behavior: 'smooth' })
+                                                                    }}
+                                                                    className="absolute left-0 top-1/2 -translate-y-1/2 -ml-2 z-10 p-1 bg-black/50 text-white rounded-full opacity-0 group-hover/carousel:opacity-100 transition-opacity hover:bg-black/70 disabled:opacity-0"
+                                                                >
+                                                                    <ChevronLeft className="w-4 h-4" />
+                                                                </button>
+
+                                                                <div className="flex gap-2 overflow-x-auto pb-3 pt-1 custom-scrollbar px-1 snap-x">
+                                                                    {vistoria.fotos.map((foto: string, fIdx: number) => (
+                                                                        <button
+                                                                            key={fIdx}
+                                                                            onClick={() => setActiveLightbox({ photos: vistoria.fotos, index: fIdx })}
+                                                                            className="flex-shrink-0 w-24 h-24 rounded-lg overflow-hidden border border-slate-100 dark:border-slate-700 hover:ring-2 hover:ring-teal-500/50 transition-all snap-center relative group"
+                                                                        >
+                                                                            <img src={getImageUrl(foto)} alt="" className="w-full h-full object-cover" />
+                                                                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
+                                                                        </button>
+                                                                    ))}
+                                                                </div>
+
+                                                                <button
+                                                                    onClick={(e) => {
+                                                                        const container = e.currentTarget.previousElementSibling
+                                                                        if (container) container.scrollBy({ left: 200, behavior: 'smooth' })
+                                                                    }}
+                                                                    className="absolute right-0 top-1/2 -translate-y-1/2 -mr-2 z-10 p-1 bg-black/50 text-white rounded-full opacity-0 group-hover/carousel:opacity-100 transition-opacity hover:bg-black/70"
+                                                                >
+                                                                    <ChevronRight className="w-4 h-4" />
+                                                                </button>
+                                                            </div>
                                                         </div>
                                                     )}
                                                 </div>
@@ -1633,6 +2015,7 @@ function ModalDetalhesReforma({ reforma, onClose, onUpdate, onEdit, user, showNo
                         )}
                     </div>
                 </div>
+
 
 
 
@@ -1742,145 +2125,150 @@ function ModalDetalhesReforma({ reforma, onClose, onUpdate, onEdit, user, showNo
                         </div>
                     </div>
                 </div>
-            </div>
 
-            {/* Modal de Confirmação de Status */}
-            {confirmStatus && (
-                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center z-[200] p-4 animate-fadeIn">
-                    <div className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-sm p-6 shadow-2xl border border-slate-200 dark:border-slate-800 transform animate-scaleIn">
-                        <div className="w-16 h-16 bg-teal-100 dark:bg-teal-500/20 rounded-full flex items-center justify-center mx-auto mb-4 text-teal-600 dark:text-teal-400">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
-                        </div>
-
-                        <h3 className="text-xl font-bold text-slate-800 dark:text-white text-center mb-2">Alterar Status</h3>
-                        <p className="text-slate-500 dark:text-slate-400 text-center text-sm mb-6 leading-relaxed">
-                            Tem certeza que deseja alterar o status desta reforma para <span className="font-bold text-teal-600 dark:text-teal-400">"{confirmStatus}"</span>?
-                        </p>
-
-                        <div className="grid grid-cols-2 gap-3">
-                            <button
-                                onClick={() => setConfirmStatus(null)}
-                                className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-xl text-sm font-bold transition-all"
-                            >
-                                Cancelar
-                            </button>
-                            <button
-                                onClick={confirmStatusChange}
-                                disabled={statusLoading}
-                                className="px-4 py-2.5 bg-teal-500 hover:bg-teal-600 text-white rounded-xl text-sm font-bold shadow-lg shadow-teal-500/30 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
-                            >
-                                {statusLoading && <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>}
-                                Confirmar
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Lightbox para fotos */}
-            {activeLightbox && (
-                <div
-                    className="fixed inset-0 bg-black/90 z-[300] flex items-center justify-center p-4 animate-fadeIn"
-                    onClick={() => setActiveLightbox(null)}
-                >
-                    <button
-                        onClick={() => setActiveLightbox(null)}
-                        className="absolute top-4 right-4 text-white hover:text-teal-500 transition-colors z-[310]"
-                    >
-                        <X className="w-8 h-8" />
-                    </button>
-
-                    {/* Navigation Buttons */}
-                    {activeLightbox.index > 0 && (
-                        <button
-                            onClick={(e) => {
-                                e.stopPropagation()
-                                setActiveLightbox(prev => prev ? { ...prev, index: prev.index - 1 } : null)
-                            }}
-                            className="absolute left-4 top-1/2 -translate-y-1/2 text-white/50 hover:text-white transition-colors p-2 z-[310]"
-                        >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
-                        </button>
-                    )}
-                    {activeLightbox.index < activeLightbox.photos.length - 1 && (
-                        <button
-                            onClick={(e) => {
-                                e.stopPropagation()
-                                setActiveLightbox(prev => prev ? { ...prev, index: prev.index + 1 } : null)
-                            }}
-                            className="absolute right-4 top-1/2 -translate-y-1/2 text-white/50 hover:text-white transition-colors p-2 z-[310]"
-                        >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
-                        </button>
-                    )}
-
-                    <img
-                        src={getImageUrl(activeLightbox.photos[activeLightbox.index])}
-                        className="max-w-full max-h-[90vh] rounded-lg shadow-2xl animate-scaleIn object-contain"
-                        onClick={(e) => e.stopPropagation()}
-                    />
-                </div>
-            )}
-
-            {/* Modal de Vistoria */}
-            <VistoriaModal
-                isOpen={showVistoriaModal}
-                onClose={() => {
-                    setShowVistoriaModal(false)
-                    setVistoriaForm(prev => ({ ...prev, fotos: [], observacoes: '', status: 'Aguardando Vistoria' }))
-                }}
-                vistoriaForm={vistoriaForm}
-                setVistoriaForm={setVistoriaForm}
-                uploadingVistoria={uploadingVistoria}
-                statusLoading={statusLoading}
-                handleVistoriaPhotoUpload={handleVistoriaPhotoUpload}
-                removeVistoriaPhoto={removeVistoriaPhoto}
-                saveVistoria={saveVistoria}
-                getImageUrl={getImageUrl}
-            />
-
-            {/* Modal de Confirmação de Exclusão */}
-            {deleteVistoriaIndex !== null && (
-                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center z-[250] p-4 animate-fadeIn">
-                    <div className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-md p-6 shadow-2xl border border-slate-200 dark:border-slate-800 transform animate-scaleIn">
-                        <div className="flex items-center gap-3 mb-4">
-                            <div className="w-12 h-12 bg-red-100 dark:bg-red-500/20 rounded-xl flex items-center justify-center text-red-600 dark:text-red-400">
-                                <Trash2 className="w-6 h-6" />
+                {/* Modal de Confirmação de Status */}
+                {confirmStatus && (
+                    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center z-[200] p-4 animate-fadeIn">
+                        <div className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-sm p-6 shadow-2xl border border-slate-200 dark:border-slate-800 transform animate-scaleIn">
+                            <div className="w-16 h-16 bg-teal-100 dark:bg-teal-500/20 rounded-full flex items-center justify-center mx-auto mb-4 text-teal-600 dark:text-teal-400">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
                             </div>
-                            <h3 className="text-lg font-bold text-slate-800 dark:text-white">
-                                Excluir Vistoria
-                            </h3>
-                        </div>
 
-                        <p className="text-sm text-slate-600 dark:text-slate-300 mb-6">
-                            Tem certeza que deseja excluir esta vistoria? Esta ação não pode ser desfeita.
-                        </p>
+                            <h3 className="text-xl font-bold text-slate-800 dark:text-white text-center mb-2">Alterar Status</h3>
+                            <p className="text-slate-500 dark:text-slate-400 text-center text-sm mb-6 leading-relaxed">
+                                Tem certeza que deseja alterar o status desta reforma para <span className="font-bold text-teal-600 dark:text-teal-400">"{confirmStatus}"</span>?
+                            </p>
 
-                        <div className="flex gap-3">
-                            <button
-                                onClick={() => setDeleteVistoriaIndex(null)}
-                                className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl text-sm font-bold transition-all"
-                            >
-                                Cancelar
-                            </button>
-                            <button
-                                onClick={confirmDeleteVistoria}
-                                disabled={statusLoading}
-                                className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-bold shadow-lg shadow-red-500/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-                            >
-                                {statusLoading ? (
-                                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                                ) : (
-                                    <>
-                                        <Trash2 className="w-4 h-4" />
-                                        Excluir
-                                    </>
-                                )}
-                            </button>
+                            <div className="grid grid-cols-2 gap-3">
+                                <button
+                                    onClick={() => setConfirmStatus(null)}
+                                    className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-xl text-sm font-bold transition-all"
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    onClick={confirmStatusChange}
+                                    disabled={statusLoading}
+                                    className="px-4 py-2.5 bg-teal-500 hover:bg-teal-600 text-white rounded-xl text-sm font-bold shadow-lg shadow-teal-500/30 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                                >
+                                    {statusLoading && <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>}
+                                    Confirmar
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
+                )
+                }
+
+                {/* Lightbox para fotos */}
+                {
+                    activeLightbox && (
+                        <div
+                            className="fixed inset-0 bg-black/90 z-[300] flex items-center justify-center p-4 animate-fadeIn"
+                            onClick={() => setActiveLightbox(null)}
+                        >
+                            <button
+                                onClick={() => setActiveLightbox(null)}
+                                className="absolute top-4 right-4 text-white hover:text-teal-500 transition-colors z-[310]"
+                            >
+                                <X className="w-8 h-8" />
+                            </button>
+
+                            {/* Navigation Buttons */}
+                            {activeLightbox.index > 0 && (
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation()
+                                        setActiveLightbox(prev => prev ? { ...prev, index: prev.index - 1 } : null)
+                                    }}
+                                    className="absolute left-4 top-1/2 -translate-y-1/2 text-white/50 hover:text-white transition-colors p-2 z-[310]"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                                </button>
+                            )}
+                            {activeLightbox.index < activeLightbox.photos.length - 1 && (
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation()
+                                        setActiveLightbox(prev => prev ? { ...prev, index: prev.index + 1 } : null)
+                                    }}
+                                    className="absolute right-4 top-1/2 -translate-y-1/2 text-white/50 hover:text-white transition-colors p-2 z-[310]"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                                </button>
+                            )}
+
+                            <img
+                                src={getImageUrl(activeLightbox.photos[activeLightbox.index])}
+                                className="max-w-full max-h-[90vh] rounded-lg shadow-2xl animate-scaleIn object-contain"
+                                onClick={(e) => e.stopPropagation()}
+                            />
+                        </div>
+                    )
+                }
+
+                {/* Modal de Vistoria */}
+                <VistoriaModal
+                    isOpen={showVistoriaModal}
+                    onClose={() => {
+                        setShowVistoriaModal(false)
+                        setVistoriaForm(prev => ({ ...prev, fotos: [], observacoes: '', status: 'Aguardando Vistoria' }))
+                    }}
+                    vistoriaForm={vistoriaForm}
+                    setVistoriaForm={setVistoriaForm}
+                    uploadingVistoria={uploadingVistoria}
+                    statusLoading={statusLoading}
+                    handleVistoriaPhotoUpload={handleVistoriaPhotoUpload}
+                    removeVistoriaPhoto={removeVistoriaPhoto}
+                    saveVistoria={saveVistoria}
+                    getImageUrl={getImageUrl}
+                />
+
+                {/* Modal de Confirmação de Exclusão */}
+                {
+                    deleteVistoriaIndex !== null && (
+                        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center z-[250] p-4 animate-fadeIn">
+                            <div className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-md p-6 shadow-2xl border border-slate-200 dark:border-slate-800 transform animate-scaleIn">
+                                <div className="flex items-center gap-3 mb-4">
+                                    <div className="w-12 h-12 bg-red-100 dark:bg-red-500/20 rounded-xl flex items-center justify-center text-red-600 dark:text-red-400">
+                                        <Trash2 className="w-6 h-6" />
+                                    </div>
+                                    <h3 className="text-lg font-bold text-slate-800 dark:text-white">
+                                        Excluir Vistoria
+                                    </h3>
+                                </div>
+
+                                <p className="text-sm text-slate-600 dark:text-slate-300 mb-6">
+                                    Tem certeza que deseja excluir esta vistoria? Esta ação não pode ser desfeita.
+                                </p>
+
+                                <div className="flex gap-3">
+                                    <button
+                                        onClick={() => setDeleteVistoriaIndex(null)}
+                                        className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl text-sm font-bold transition-all"
+                                    >
+                                        Cancelar
+                                    </button>
+                                    <button
+                                        onClick={confirmDeleteVistoria}
+                                        disabled={statusLoading}
+                                        className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-bold shadow-lg shadow-red-500/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                                    >
+                                        {statusLoading ? (
+                                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                        ) : (
+                                            <>
+                                                <Trash2 className="w-4 h-4" />
+                                                Excluir
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )
+                }
+            </div>
         </div>
     )
 }

@@ -9,6 +9,7 @@ import { subscribeToUnreadCount } from '@/lib/notifications-api'
 import { requestNotificationPermission } from '@/lib/fcm-helper'
 import { messaging } from '@/lib/firebase'
 import { onMessage } from 'firebase/messaging'
+import { Menu, X, Bell } from 'lucide-react'
 
 interface SidebarProps {
     isAdmin?: boolean
@@ -16,13 +17,14 @@ interface SidebarProps {
 
 export function Sidebar({ isAdmin = false }: SidebarProps) {
     const [isCollapsed, setIsCollapsed] = useState(false)
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
     const [unreadCount, setUnreadCount] = useState(0)
     const { user, logout } = useAuth()
     const pathname = usePathname()
     const router = useRouter()
 
     // Determina se é admin baseado na prop OU no usuário logado
-    const isUserAdmin = isAdmin || user?.acesso === 'Administrador' || user?.isMaster
+    const isUserAdmin = isAdmin || user?.acesso === 'Administrador' || user?.acesso === 'Desenvolvedor' || user?.isMaster
 
     // Listener para notificações (Foreground e Background setup)
     useEffect(() => {
@@ -36,202 +38,266 @@ export function Sidebar({ isAdmin = false }: SidebarProps) {
             setUnreadCount(count)
         })
 
-        // 3. Ouvir mensagens em foreground (apenas log, sem alerta visual)
+        return () => {
+            unsubscribeCount()
+        }
+    }, [user?.cpf])
+
+    // Listener separado para onMessage que reage quando 'messaging' estiver pronto
+    useEffect(() => {
         let unsubscribeOnMessage: (() => void) | undefined
+
         if (messaging) {
             try {
                 unsubscribeOnMessage = onMessage(messaging, (payload) => {
-                    // Não gera notificação visual pois o usuário já está no app
+                    // Recebido em foreground - o contador de não lidas já deve atualizar via onSnapshot
+                    console.log('Mensagem recebida em foreground:', payload)
                 })
             } catch (err) {
-                // Silently fail
+                console.warn('Erro ao registrar listener de mensagens:', err)
             }
         }
 
         return () => {
-            unsubscribeCount()
             if (unsubscribeOnMessage) unsubscribeOnMessage()
         }
-    }, [user?.cpf])
+    }, [messaging]) // Re-roda quando messaging for inicializado
 
-    // Função auxiliar para verificar active state
+    // Close mobile menu on route change
+    useEffect(() => {
+        setIsMobileMenuOpen(false)
+    }, [pathname])
+
+    // Helper to check active state
     const isActive = (path: string) => pathname === path || pathname.startsWith(path + '/')
 
+    // Get Page Title for Mobile Header
+    const getPageTitle = () => {
+        if (pathname.startsWith('/reformas')) return 'Reformas'
+        if (pathname.startsWith('/pautas') || pathname.startsWith('/votacao')) return 'Votação'
+        if (pathname.startsWith('/resultados')) return 'Resultados'
+        if (pathname.startsWith('/notificacoes')) return 'Notificações'
+        if (pathname.startsWith('/dashboard')) return 'Dashboard'
+        if (pathname.startsWith('/admin')) return 'Admin'
+        if (pathname.startsWith('/configuracoes')) return 'Configurações'
+        if (pathname.startsWith('/sobre')) return 'Sobre'
+        return 'Meu Condomínio'
+    }
+
     return (
-        <aside
-            className={`sticky top-0 h-screen bg-[#020617] text-slate-400 transition-all duration-300 z-50 flex flex-col border-r border-slate-800/50 rounded-r-[2.5rem] shadow-2xl ${isCollapsed ? 'w-20' : 'w-64'
-                }`}
-        >
-            {/* Header / Logo */}
-            <div className="flex items-center justify-between h-16 px-4 mb-4 bg-[#020617]">
-                <div className="flex items-center gap-3">
-                    <div className="relative w-8 h-8 flex-shrink-0">
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-r from-cyan-500 to-blue-600 flex items-center justify-center">
-                            <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                            </svg>
-                        </div>
-                    </div>
-                    {!isCollapsed && (
-                        <span className="text-slate-100 font-bold text-lg tracking-tight truncate">
-                            Meu Condomínio
-                        </span>
-                    )}
+        <>
+            {/* Mobile Top Bar */}
+            <header className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-[#020617] border-b border-slate-800/50 flex items-center justify-between px-5 z-[45] shadow-lg">
+                <div className="flex items-center">
+                    <span className="text-slate-100 font-extrabold text-xl tracking-tight">
+                        {getPageTitle()}
+                    </span>
                 </div>
 
-                {/* Collapse Button (Mobile/Desktop Toggle) */}
-                <button
-                    onClick={() => setIsCollapsed(!isCollapsed)}
-                    className="lg:hidden text-slate-500 hover:text-slate-400"
-                >
-                    <MenuIcon />
-                </button>
-            </div>
-
-            {/* Scrollable Content */}
-            <div className="flex-1 overflow-y-auto px-4 space-y-8 custom-scrollbar">
-
-                {/* Group: PAGES */}
-                <div>
-                    {!isCollapsed && (
-                        <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3 pl-3">
-                            Páginas
-                        </h3>
-                    )}
-                    <div className="space-y-1">
-                        <SidebarItem
-                            icon={<DashboardIcon />}
-                            label="Dashboard"
-                            href="/dashboard"
-                            active={isActive('/dashboard')}
-                            collapsed={isCollapsed}
-                        />
-                        <SidebarItem
-                            icon={<VoteIcon />}
-                            label="Votação"
-                            href="/pautas"
-                            active={isActive('/pautas') || isActive('/votacao')}
-                            collapsed={isCollapsed}
-                        />
-                        <SidebarItem
-                            icon={<ChartIcon />}
-                            label="Resultados"
-                            href="/resultados"
-                            active={isActive('/resultados')}
-                            collapsed={isCollapsed}
-                        />
-
-                        <SidebarItem
-                            icon={<NotificationsIcon />}
-                            label="Notificações"
-                            href="/notificacoes"
-                            active={isActive('/notificacoes')}
-                            collapsed={isCollapsed}
-                            badge={unreadCount > 0 ? unreadCount : undefined}
-                        />
-                        <SidebarItem
-                            icon={<ReformaIcon />}
-                            label="Reforma"
-                            href="/reformas"
-                            active={isActive('/reformas')}
-                            collapsed={isCollapsed}
-                        />
-                    </div>
-                </div>
-
-                {/* Group: MORE */}
-                <div>
-                    {!isCollapsed && (
-                        <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3 pl-3">
-                            Mais
-                        </h3>
-                    )}
-                    <div className="space-y-1">
-                        {isUserAdmin && (
-                            <SidebarItem
-                                icon={<AdminIcon />}
-                                label="Administração"
-                                href="/admin"
-                                active={pathname.startsWith('/admin')}
-                                collapsed={isCollapsed}
-                                subItems={[
-                                    { label: 'Gerenciar Pautas', href: '/admin/pautas' },
-                                    { label: 'Gerenciar Moradores', href: '/admin/moradores' }
-                                ]}
-                            />
+                <div className="flex items-center gap-1">
+                    <Link href="/notificacoes" className="relative p-2.5 text-slate-400 hover:text-white transition-colors">
+                        <Bell size={22} />
+                        {unreadCount > 0 && (
+                            <span className="absolute top-1.5 right-1.5 w-4 h-4 bg-blue-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-[#020617]">
+                                {unreadCount}
+                            </span>
                         )}
-                        <SidebarItem
-                            icon={<SettingsIcon />}
-                            label="Configurações"
-                            href="/configuracoes"
-                            active={isActive('/configuracoes')}
-                            collapsed={isCollapsed}
-                        />
-                        <SidebarItem
-                            icon={<UtilityIcon />}
-                            label="Sobre"
-                            href="/sobre"
-                            active={isActive('/sobre')}
-                            collapsed={isCollapsed}
-                        />
+                    </Link>
+                    <button
+                        onClick={() => setIsMobileMenuOpen(true)}
+                        className="p-2.5 text-slate-400 hover:text-white transition-colors"
+                    >
+                        <Menu size={26} />
+                    </button>
+                </div>
+            </header>
+
+            {/* Backdrop / Overlay for Mobile */}
+            {isMobileMenuOpen && (
+                <div
+                    className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[55] lg:hidden"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                />
+            )}
+
+            {/* Sidebar Aside */}
+            <aside
+                className={`fixed lg:sticky top-0 h-full lg:h-screen bg-[#020617] text-slate-400 transition-all duration-300 z-[60] flex flex-col border-r border-slate-800/50 lg:rounded-r-[2.5rem] shadow-2xl 
+                    ${isCollapsed ? 'lg:w-20' : 'lg:w-64'}
+                    ${isMobileMenuOpen ? 'translate-x-0 w-72' : '-translate-x-full lg:translate-x-0 w-72 lg:w-auto'}
+                `}
+            >
+                {/* Header / Logo */}
+                <div className="flex items-center justify-between h-16 px-4 mb-4 bg-[#020617] lg:bg-transparent">
+                    <div className="flex items-center gap-3">
+                        <div className="relative w-8 h-8 flex-shrink-0">
+                            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
+                                <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                                </svg>
+                            </div>
+                        </div>
+                        {(!isCollapsed || isMobileMenuOpen) && (
+                            <span className="text-slate-100 font-extrabold text-lg tracking-tight truncate">
+                                Meu Condomínio
+                            </span>
+                        )}
                     </div>
+
+                    {/* Close/Toggle Button */}
+                    <button
+                        onClick={() => isMobileMenuOpen ? setIsMobileMenuOpen(false) : setIsCollapsed(!isCollapsed)}
+                        className="text-slate-500 hover:text-white p-2 rounded-xl hover:bg-slate-800/50 transition-all"
+                    >
+                        {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+                    </button>
                 </div>
 
-            </div>
+                {/* Scrollable Content */}
+                <div className="flex-1 overflow-y-auto px-4 space-y-8 custom-scrollbar">
 
-            {/* Bottom Section */}
-            <div className="mt-auto border-t border-slate-800/50">
-                {user && !isCollapsed ? (
-                    <div className="p-4 flex items-center gap-3">
-                        <div className="w-9 h-9 flex-shrink-0 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-white font-bold text-base shadow-lg ring-2 ring-violet-500/20">
-                            {user.nome.charAt(0).toUpperCase()}
+                    {/* Group: PAGES */}
+                    <div>
+                        {(!isCollapsed || isMobileMenuOpen) && (
+                            <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3 pl-3">
+                                Páginas
+                            </h3>
+                        )}
+                        <div className="space-y-1">
+                            <SidebarItem
+                                icon={<DashboardIcon />}
+                                label="Dashboard"
+                                href="/dashboard"
+                                active={isActive('/dashboard')}
+                                collapsed={isCollapsed && !isMobileMenuOpen}
+                            />
+                            <SidebarItem
+                                icon={<VoteIcon />}
+                                label="Votação"
+                                href="/pautas"
+                                active={isActive('/pautas') || isActive('/votacao')}
+                                collapsed={isCollapsed && !isMobileMenuOpen}
+                            />
+                            <SidebarItem
+                                icon={<ChartIcon />}
+                                label="Resultados"
+                                href="/resultados"
+                                active={isActive('/resultados')}
+                                collapsed={isCollapsed && !isMobileMenuOpen}
+                            />
+
+                            <SidebarItem
+                                icon={<NotificationsIcon />}
+                                label="Notificações"
+                                href="/notificacoes"
+                                active={isActive('/notificacoes')}
+                                collapsed={isCollapsed && !isMobileMenuOpen}
+                                badge={unreadCount > 0 ? unreadCount : undefined}
+                            />
+                            <SidebarItem
+                                icon={<ReformaIcon />}
+                                label="Reforma"
+                                href="/reformas"
+                                active={isActive('/reformas')}
+                                collapsed={isCollapsed && !isMobileMenuOpen}
+                            />
                         </div>
-                        <div className="flex-1 min-w-0">
-                            <p className="text-sm font-bold text-slate-200 truncate leading-tight">
-                                {user.nome.split(' ')[0]}
-                            </p>
-                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-tight truncate">
-                                AP {user.apartamento} • {user.torre}
-                            </p>
-                        </div>
-                        <button
-                            onClick={() => {
-                                logout()
-                                router.push('/login')
-                            }}
-                            className="p-2.5 rounded-xl transition-all duration-200 text-red-400 hover:text-red-300 hover:bg-red-500/10"
-                            title="Sair da Conta"
-                        >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                                <polyline points="16 17 21 12 16 7" />
-                                <line x1="21" y1="12" x2="9" y2="12" />
-                            </svg>
-                        </button>
                     </div>
-                ) : user && isCollapsed ? (
-                    <div className="py-4 flex flex-col items-center gap-4">
-                        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-white font-bold text-xs ring-2 ring-violet-500/20">
-                            {user.nome.charAt(0).toUpperCase()}
+
+                    {/* Group: MORE */}
+                    <div>
+                        {(!isCollapsed || isMobileMenuOpen) && (
+                            <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3 pl-3">
+                                Mais
+                            </h3>
+                        )}
+                        <div className="space-y-1">
+                            {isUserAdmin && (
+                                <SidebarItem
+                                    icon={<AdminIcon />}
+                                    label="Administração"
+                                    href="/admin"
+                                    active={pathname.startsWith('/admin')}
+                                    collapsed={isCollapsed && !isMobileMenuOpen}
+                                    subItems={[
+                                        { label: 'Gerenciar Pautas', href: '/admin/pautas' },
+                                        { label: 'Gerenciar Moradores', href: '/admin/moradores' }
+                                    ]}
+                                />
+                            )}
+                            <SidebarItem
+                                icon={<SettingsIcon />}
+                                label="Configurações"
+                                href="/configuracoes"
+                                active={isActive('/configuracoes')}
+                                collapsed={isCollapsed && !isMobileMenuOpen}
+                            />
+                            <SidebarItem
+                                icon={<UtilityIcon />}
+                                label="Sobre"
+                                href="/sobre"
+                                active={isActive('/sobre')}
+                                collapsed={isCollapsed && !isMobileMenuOpen}
+                            />
                         </div>
-                        <button
-                            onClick={() => {
-                                logout()
-                                router.push('/login')
-                            }}
-                            className="p-2 rounded-lg transition-all duration-200 text-red-400 hover:text-red-300 hover:bg-red-500/10"
-                            title="Sair"
-                        >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                                <polyline points="16 17 21 12 16 7" />
-                                <line x1="21" y1="12" x2="9" y2="12" />
-                            </svg>
-                        </button>
                     </div>
-                ) : null}
-            </div>
-        </aside>
+
+                </div>
+
+                {/* Bottom Section */}
+                <div className="mt-auto border-t border-slate-800/50">
+                    {user && (!isCollapsed || isMobileMenuOpen) ? (
+                        <div className="p-4 flex items-center gap-3">
+                            <div className="w-9 h-9 flex-shrink-0 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-white font-bold text-base shadow-lg ring-2 ring-violet-500/20">
+                                {user.nome.charAt(0).toUpperCase()}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <p className="text-sm font-bold text-slate-200 truncate leading-tight">
+                                    {user.nome.split(' ')[0]}
+                                </p>
+                                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-tight truncate">
+                                    AP {user.apartamento} • {user.torre}
+                                </p>
+                            </div>
+                            <button
+                                onClick={() => {
+                                    logout()
+                                    router.push('/login')
+                                }}
+                                className="p-2.5 rounded-xl transition-all duration-200 text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                                title="Sair da Conta"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                                    <polyline points="16 17 21 12 16 7" />
+                                    <line x1="21" y1="12" x2="9" y2="12" />
+                                </svg>
+                            </button>
+                        </div>
+                    ) : user && isCollapsed ? (
+                        <div className="py-4 flex flex-col items-center gap-4">
+                            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-white font-bold text-xs ring-2 ring-violet-500/20">
+                                {user.nome.charAt(0).toUpperCase()}
+                            </div>
+                            <button
+                                onClick={() => {
+                                    logout()
+                                    router.push('/login')
+                                }}
+                                className="p-2 rounded-lg transition-all duration-200 text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                                title="Sair"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                                    <polyline points="16 17 21 12 16 7" />
+                                    <line x1="21" y1="12" x2="9" y2="12" />
+                                </svg>
+                            </button>
+                        </div>
+                    ) : null}
+                </div>
+            </aside>
+        </>
     )
 }
 

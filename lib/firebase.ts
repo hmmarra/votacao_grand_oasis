@@ -23,20 +23,18 @@ const isConfigValid = () => {
   )
 }
 
+// Importar Messaging apenas no client-side
+import { getMessaging, Messaging, isSupported } from 'firebase/messaging'
+
+let messaging: Messaging | null = null
+
 // Inicializar Firebase apenas se as variáveis estiverem configuradas
 let app: FirebaseApp | null = null
 let db: Firestore | null = null
 let auth: Auth | null = null
 
-
-// Importar Messaging apenas no client-side
-import { getMessaging, Messaging } from 'firebase/messaging'
-
-let messaging: Messaging | null = null
-
 if (isConfigValid()) {
   try {
-    // Evitar múltiplas inicializações
     if (getApps().length === 0) {
       app = initializeApp(firebaseConfig)
     } else {
@@ -45,15 +43,29 @@ if (isConfigValid()) {
     db = getFirestore(app)
     auth = getAuth(app)
 
-    // Inicializar Messaging apenas no browser
-    if (typeof window !== 'undefined') {
-      try {
-        messaging = getMessaging(app)
-      } catch (e) {
-        console.warn('Firebase Messaging não suportado neste navegador', e)
-      }
-    }
+    // Inicializar Messaging apenas no browser e se suportado
+    if (typeof window !== 'undefined' && app) {
+      const initMessaging = async () => {
+        try {
+          // Checagem extra para environments que não suportam Notifications/SW
+          const isSupportedBrowser = 'Notification' in window && 'serviceWorker' in navigator;
+          if (!isSupportedBrowser) {
+            console.warn('Este navegador não suporta notificações Push.');
+            return;
+          }
 
+          const supported = await isSupported();
+          if (supported) {
+            messaging = getMessaging(app!);
+          } else {
+            console.warn('Firebase Messaging não é suportado neste navegador.');
+          }
+        } catch (err) {
+          console.warn('Erro ao inicializar Firebase Messaging:', err);
+        }
+      }
+      initMessaging();
+    }
   } catch (error) {
     console.error('Erro ao inicializar Firebase:', error)
   }

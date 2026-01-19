@@ -35,18 +35,18 @@ export function TermsModal({ isOpen, onClose, type }: TermsModalProps) {
   const isTerms = type === 'terms'
 
   const content = isTerms ? (
-    <div className="space-y-4 text-gray-700 dark:text-gray-300">
-      <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Termos de Uso</h2>
+    <div className="space-y-4 text-slate-700 dark:text-slate-300">
+      <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-4">Termos de Uso</h2>
 
       <section className="space-y-3">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">1. Aceitação dos Termos</h3>
+        <h3 className="text-lg font-semibold text-slate-900 dark:text-white">1. Aceitação dos Termos</h3>
         <p className="text-sm leading-relaxed">
           Ao acessar e utilizar o Sistema de Votação do Condomínio Meu Condomínio, você concorda em cumprir e estar vinculado aos seguintes termos e condições de uso. Se você não concorda com qualquer parte destes termos, não deve utilizar o sistema.
         </p>
       </section>
 
       <section className="space-y-3">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">2. Uso do Sistema</h3>
+        <h3 className="text-lg font-semibold text-slate-900 dark:text-white">2. Uso do Sistema</h3>
         <p className="text-sm leading-relaxed">
           O sistema é destinado exclusivamente para moradores e administradores autorizados do Condomínio Meu Condomínio. É proibido:
         </p>
@@ -60,7 +60,7 @@ export function TermsModal({ isOpen, onClose, type }: TermsModalProps) {
       </section>
 
       <section className="space-y-3">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">3. Responsabilidades do Usuário</h3>
+        <h3 className="text-lg font-semibold text-slate-900 dark:text-white">3. Responsabilidades do Usuário</h3>
         <p className="text-sm leading-relaxed">
           Você é responsável por:
         </p>
@@ -73,52 +73,52 @@ export function TermsModal({ isOpen, onClose, type }: TermsModalProps) {
       </section>
 
       <section className="space-y-3">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">4. Processo de Votação</h3>
+        <h3 className="text-lg font-semibold text-slate-900 dark:text-white">4. Processo de Votação</h3>
         <p className="text-sm leading-relaxed">
           Cada usuário autorizado possui direito a um voto por pauta. O voto é secreto e não pode ser alterado após a confirmação, exceto em casos especiais autorizados pela administração. Os resultados das votações são divulgados de acordo com as regras estabelecidas pelo condomínio.
         </p>
       </section>
 
       <section className="space-y-3">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">5. Modificações e Suspensão</h3>
+        <h3 className="text-lg font-semibold text-slate-900 dark:text-white">5. Modificações e Suspensão</h3>
         <p className="text-sm leading-relaxed">
           A administração reserva-se o direito de modificar, suspender ou encerrar o acesso ao sistema a qualquer momento, sem aviso prévio, em caso de violação destes termos ou por questões de segurança e manutenção.
         </p>
       </section>
 
       <section className="space-y-3">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">6. Limitação de Responsabilidade</h3>
+        <h3 className="text-lg font-semibold text-slate-900 dark:text-white">6. Limitação de Responsabilidade</h3>
         <p className="text-sm leading-relaxed">
           O sistema é fornecido "como está", sem garantias de qualquer tipo. A administração não se responsabiliza por interrupções, erros técnicos ou perda de dados decorrentes do uso do sistema, exceto em casos de negligência comprovada.
         </p>
       </section>
 
       <section className="space-y-3">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">7. Lei Aplicável</h3>
+        <h3 className="text-lg font-semibold text-slate-900 dark:text-white">7. Lei Aplicável</h3>
         <p className="text-sm leading-relaxed">
           Estes termos são regidos pelas leis brasileiras. Qualquer disputa será resolvida nos tribunais competentes do Brasil.
         </p>
       </section>
 
-      <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
-        <p className="text-xs text-gray-500 dark:text-gray-400">
+      <div className="pt-4 border-t border-slate-200 dark:border-slate-700">
+        <p className="text-xs text-slate-500 dark:text-slate-400">
           Última atualização: {new Date().toLocaleDateString('pt-BR')}
         </p>
       </div>
     </div>
   ) : (
-    <div className="space-y-4 text-gray-700 dark:text-gray-300">
-      <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Política de Privacidade e Proteção de Dados</h2>
+    <div className="space-y-4 text-slate-700 dark:text-slate-300">
+      <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-4">Política de Privacidade e Proteção de Dados</h2>
 
       <section className="space-y-3">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">1. Introdução</h3>
+        <h3 className="text-lg font-semibold text-slate-900 dark:text-white">1. Introdução</h3>
         <p className="text-sm leading-relaxed">
           Esta Política de Privacidade descreve como o Sistema de Votação do Condomínio Meu Condomínio coleta, usa, armazena e protege seus dados pessoais, em conformidade com a Lei Geral de Proteção de Dados (LGPD - Lei nº 13.709/2018).
         </p>
       </section>
 
       <section className="space-y-3">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">2. Dados Coletados</h3>
+        <h3 className="text-lg font-semibold text-slate-900 dark:text-white">2. Dados Coletados</h3>
         <p className="text-sm leading-relaxed">
           Coletamos os seguintes dados pessoais para operação do sistema:
         </p>
@@ -132,7 +132,7 @@ export function TermsModal({ isOpen, onClose, type }: TermsModalProps) {
       </section>
 
       <section className="space-y-3">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">3. Finalidade do Tratamento</h3>
+        <h3 className="text-lg font-semibold text-slate-900 dark:text-white">3. Finalidade do Tratamento</h3>
         <p className="text-sm leading-relaxed">
           Seus dados pessoais são utilizados exclusivamente para:
         </p>
@@ -147,7 +147,7 @@ export function TermsModal({ isOpen, onClose, type }: TermsModalProps) {
       </section>
 
       <section className="space-y-3">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">4. Base Legal</h3>
+        <h3 className="text-lg font-semibold text-slate-900 dark:text-white">4. Base Legal</h3>
         <p className="text-sm leading-relaxed">
           O tratamento de seus dados pessoais é baseado em:
         </p>
@@ -160,7 +160,7 @@ export function TermsModal({ isOpen, onClose, type }: TermsModalProps) {
       </section>
 
       <section className="space-y-3">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">5. Compartilhamento de Dados</h3>
+        <h3 className="text-lg font-semibold text-slate-900 dark:text-white">5. Compartilhamento de Dados</h3>
         <p className="text-sm leading-relaxed">
           Seus dados pessoais não são compartilhados com terceiros, exceto:
         </p>
@@ -172,7 +172,7 @@ export function TermsModal({ isOpen, onClose, type }: TermsModalProps) {
       </section>
 
       <section className="space-y-3">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">6. Segurança dos Dados</h3>
+        <h3 className="text-lg font-semibold text-slate-900 dark:text-white">6. Segurança dos Dados</h3>
         <p className="text-sm leading-relaxed">
           Implementamos medidas técnicas e organizacionais adequadas para proteger seus dados pessoais contra acesso não autorizado, alteração, divulgação ou destruição, incluindo:
         </p>
@@ -186,14 +186,14 @@ export function TermsModal({ isOpen, onClose, type }: TermsModalProps) {
       </section>
 
       <section className="space-y-3">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">7. Retenção de Dados</h3>
+        <h3 className="text-lg font-semibold text-slate-900 dark:text-white">7. Retenção de Dados</h3>
         <p className="text-sm leading-relaxed">
           Mantemos seus dados pessoais apenas pelo tempo necessário para cumprir as finalidades descritas nesta política ou conforme exigido por lei. Dados de votação são mantidos para fins de auditoria e transparência, respeitando os prazos legais aplicáveis.
         </p>
       </section>
 
       <section className="space-y-3">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">8. Seus Direitos (LGPD)</h3>
+        <h3 className="text-lg font-semibold text-slate-900 dark:text-white">8. Seus Direitos (LGPD)</h3>
         <p className="text-sm leading-relaxed">
           De acordo com a LGPD, você possui os seguintes direitos:
         </p>
@@ -212,28 +212,28 @@ export function TermsModal({ isOpen, onClose, type }: TermsModalProps) {
       </section>
 
       <section className="space-y-3">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">9. Confidencialidade dos Votos</h3>
+        <h3 className="text-lg font-semibold text-slate-900 dark:text-white">9. Confidencialidade dos Votos</h3>
         <p className="text-sm leading-relaxed">
           Os votos individuais são mantidos em sigilo. Apenas resultados agregados são divulgados publicamente. A identidade dos votantes não é revelada, exceto quando necessário para auditoria legal ou investigação de irregularidades, sempre com autorização judicial quando aplicável.
         </p>
       </section>
 
       <section className="space-y-3">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">10. Alterações nesta Política</h3>
+        <h3 className="text-lg font-semibold text-slate-900 dark:text-white">10. Alterações nesta Política</h3>
         <p className="text-sm leading-relaxed">
           Podemos atualizar esta Política de Privacidade periodicamente. Alterações significativas serão comunicadas através do sistema ou por outros meios apropriados. Recomendamos revisar esta política regularmente.
         </p>
       </section>
 
       <section className="space-y-3">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">11. Contato</h3>
+        <h3 className="text-lg font-semibold text-slate-900 dark:text-white">11. Contato</h3>
         <p className="text-sm leading-relaxed">
           Para questões relacionadas a esta Política de Privacidade ou para exercer seus direitos, entre em contato com a administração do Condomínio Meu Condomínio.
         </p>
       </section>
 
-      <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
-        <p className="text-xs text-gray-500 dark:text-gray-400">
+      <div className="pt-4 border-t border-slate-200 dark:border-slate-700">
+        <p className="text-xs text-slate-500 dark:text-slate-400">
           Última atualização: {new Date().toLocaleDateString('pt-BR')}
         </p>
       </div>
@@ -242,21 +242,21 @@ export function TermsModal({ isOpen, onClose, type }: TermsModalProps) {
 
   return (
     <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm"
       onClick={onClose}
     >
       <div
-        className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col"
+        className="bg-white dark:bg-slate-950 rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col border border-slate-200 dark:border-slate-800"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+        <div className="flex items-center justify-between p-6 border-b border-slate-200 dark:border-slate-800">
+          <h2 className="text-xl font-bold text-slate-900 dark:text-white">
             {isTerms ? 'Termos de Uso' : 'Política de Privacidade'}
           </h2>
           <button
             onClick={onClose}
-            className="p-2 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+            className="p-2 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
             aria-label="Fechar"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 24 24" fill="currentColor">
@@ -271,10 +271,10 @@ export function TermsModal({ isOpen, onClose, type }: TermsModalProps) {
         </div>
 
         {/* Footer */}
-        <div className="p-6 border-t border-gray-200 dark:border-gray-700">
+        <div className="p-6 border-t border-slate-200 dark:border-slate-800">
           <button
             onClick={onClose}
-            className="w-full bg-violet-600 text-white py-3 px-6 rounded-xl font-semibold hover:bg-violet-700 transition-colors"
+            className="w-full bg-cyan-600 text-white py-3 px-6 rounded-xl font-semibold hover:bg-cyan-700 transition-colors shadow-lg shadow-cyan-600/20"
           >
             Entendi
           </button>

@@ -4,8 +4,10 @@ import { useEffect, useState, useMemo } from 'react'
 import { api, Morador } from '@/lib/api-config'
 import * as XLSX from 'xlsx'
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock'
+import { useAuth } from '@/lib/auth'
 
 export function GerenciarMoradoresTab() {
+  const { user } = useAuth()
   const [moradores, setMoradores] = useState<Morador[]>([])
 
   const [loading, setLoading] = useState(false)
@@ -17,7 +19,7 @@ export function GerenciarMoradoresTab() {
     nome: '',
     apartamento: '',
     torre: '',
-    acesso: 'Morador' as 'Administrador' | 'Morador',
+    acesso: 'Morador' as 'Administrador' | 'Morador' | 'Engenharia' | 'Desenvolvedor',
     email: '',
     isMaster: false
   })
@@ -32,8 +34,11 @@ export function GerenciarMoradoresTab() {
     cpf: '',
     nome: '',
     apartamento: '',
-    torre: ''
+    torre: '',
+    acesso: 'Morador' as 'Administrador' | 'Morador' | 'Engenharia' | 'Desenvolvedor',
+    email: ''
   })
+  const [showDuplicateWarning, setShowDuplicateWarning] = useState<string | null>(null)
   const [showUploadModal, setShowUploadModal] = useState(false)
   const [fileInputKey, setFileInputKey] = useState(0)
   const [sortBy, setSortBy] = useState('Mais Recentes')
@@ -112,9 +117,13 @@ export function GerenciarMoradoresTab() {
     if (accessFilter !== 'Todos') {
       filtered = filtered.filter(morador => {
         if (accessFilter === 'Administrador') {
-          return morador.acesso === 'Administrador'
+          return morador.acesso === 'Administrador' || (morador as any).isMaster === true
         }
-        return morador.acesso === 'Morador'
+        if (accessFilter === 'Engenharia' || accessFilter === 'Desenvolvedor') {
+          return morador.acesso === accessFilter
+        }
+        // Para 'Morador', mostramos apenas os que são comuns (sem isMaster)
+        return morador.acesso === 'Morador' && !(morador as any).isMaster
       })
     }
 
@@ -357,6 +366,11 @@ export function GerenciarMoradoresTab() {
       setSaving(true)
       setMessage(null)
 
+      // Validar restrição de Desenvolvedor
+      if (formData.acesso === 'Desenvolvedor' && user?.acesso !== 'Desenvolvedor') {
+        throw new Error('Somente desenvolvedores podem cadastrar outros desenvolvedores.')
+      }
+
       // Verificar se api.createMorador existe
       if (!api.createMorador) {
         throw new Error('Função createMorador não disponível. Verifique se está usando Firebase.')
@@ -376,7 +390,11 @@ export function GerenciarMoradoresTab() {
       setFormData({ cpf: '', nome: '', apartamento: '', torre: '', acesso: 'Morador', email: '', isMaster: false })
       loadMoradores()
     } catch (err: any) {
-      setMessage({ text: 'Erro ao cadastrar morador: ' + err.message, type: 'error' })
+      if (err.message.includes('já existe') || err.message.includes('já possui um cadastro')) {
+        setShowDuplicateWarning(err.message)
+      } else {
+        setMessage({ text: 'Erro ao cadastrar morador: ' + err.message, type: 'error' })
+      }
     } finally {
       setSaving(false)
     }
@@ -388,7 +406,9 @@ export function GerenciarMoradoresTab() {
       cpf: morador.cpf || '',
       nome: morador.nome || '',
       apartamento: morador.apartamento || '',
-      torre: morador.torre || ''
+      torre: morador.torre || '',
+      acesso: (morador as any).acesso || 'Morador',
+      email: (morador as any).email || ''
     })
   }
 
@@ -404,14 +424,27 @@ export function GerenciarMoradoresTab() {
       setSaving(true)
       setMessage(null)
 
+      // Validar restrição de Desenvolvedor
+      const baseMorador = moradores.find(m => m.id === editingMorador.id)
+      const isCurrentlyDev = (baseMorador as any)?.acesso === 'Desenvolvedor'
+      const isBecomingDev = editFormData.acesso === 'Desenvolvedor'
+
+      if ((isCurrentlyDev || isBecomingDev) && user?.acesso !== 'Desenvolvedor') {
+        throw new Error('Somente desenvolvedores podem gerenciar cadastros de desenvolvedores.')
+      }
+
       if (!api.updateMorador) {
         throw new Error('Função updateMorador não disponível. Verifique se está usando Firebase.')
       }
 
-      await api.updateMorador(editingMorador.id, editFormData)
+      await api.updateMorador(editingMorador.id, {
+        ...editFormData,
+        email: editFormData.email || null,
+        isMaster: editFormData.acesso !== 'Morador'
+      })
       setMessage({ text: 'Morador atualizado com sucesso!', type: 'success' })
       setEditingMorador(null)
-      setEditFormData({ cpf: '', nome: '', apartamento: '', torre: '' })
+      setEditFormData({ cpf: '', nome: '', apartamento: '', torre: '', acesso: 'Morador', email: '' })
       loadMoradores()
     } catch (err: any) {
       setMessage({ text: 'Erro ao atualizar morador: ' + err.message, type: 'error' })
@@ -538,7 +571,7 @@ export function GerenciarMoradoresTab() {
               Tipo de Acesso
             </h4>
             <div className="flex flex-col gap-0.5">
-              {['Todos', 'Morador', 'Administrador'].map((option) => (
+              {['Todos', 'Morador', 'Administrador', 'Engenharia', 'Desenvolvedor'].map((option) => (
                 <label
                   key={option}
                   className={`flex items-center gap-2 p-1.5 rounded-lg cursor-pointer transition-all ${accessFilter === option
@@ -656,37 +689,45 @@ export function GerenciarMoradoresTab() {
 
                 <div className="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto pl-12 sm:pl-0">
                   {/* Status Badge */}
-                  <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${(morador as any).isMaster
-                    ? 'bg-teal-100 dark:bg-teal-900/30 text-teal-600 dark:text-teal-300'
-                    : (morador as any).acesso === 'Administrador'
-                      ? 'bg-cyan-100 dark:bg-cyan-900/30 text-cyan-600 dark:text-cyan-300'
-                      : 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-300'
+                  <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${(morador as any).acesso === 'Administrador'
+                    ? 'bg-cyan-100 dark:bg-cyan-900/30 text-cyan-600 dark:text-cyan-300'
+                    : (morador as any).acesso === 'Engenharia'
+                      ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-300'
+                      : (morador as any).acesso === 'Desenvolvedor'
+                        ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-300'
+                        : (morador as any).isMaster
+                          ? 'bg-teal-100 dark:bg-teal-900/30 text-teal-600 dark:text-teal-300'
+                          : 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-300'
                     }`}>
-                    {(morador as any).isMaster ? 'Master' : (morador as any).acesso || 'Morador'}
+                    {(morador as any).acesso && (morador as any).acesso !== 'Morador'
+                      ? (morador as any).acesso
+                      : (morador as any).isMaster ? 'Master' : 'Morador'}
                   </span>
 
                   {/* Actions */}
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => handleEditMorador(morador)}
-                      className="p-1.5 text-amber-500 bg-amber-50 dark:bg-amber-500/10 hover:bg-amber-500/20 rounded-lg transition-colors"
-                      title="Editar"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M21.731 2.269a2.625 2.625 0 0 0-3.712 0l-1.157 1.157 3.712 3.712 1.157-1.157a2.625 2.625 0 0 0 0-3.712ZM19.513 8.199l-3.712-3.712-8.4 8.4a5.25 5.25 0 0 0-1.32 2.214l-.8 2.685a.75.75 0 0 0 .933.933l2.685-.8a5.25 5.25 0 0 0 2.214-1.32l8.4-8.4Z" />
-                        <path d="M5.25 5.25a3 3 0 0 0-3 3v10.5a3 3 0 0 0 3 3h10.5a3 3 0 0 0 3-3V13.5a.75.75 0 0 0-1.5 0v5.25a1.5 1.5 0 0 1-1.5 1.5H5.25a1.5 1.5 0 0 1-1.5-1.5V8.25a1.5 1.5 0 0 1 1.5-1.5h5.25a.75.75 0 0 0 0-1.5H5.25Z" />
-                      </svg>
-                    </button>
-                    <button
-                      onClick={() => handleDelete(morador)}
-                      className="p-1.5 text-red-500 bg-red-50 dark:bg-red-500/10 hover:bg-red-500/20 rounded-lg transition-colors"
-                      title="Excluir"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-                        <path fillRule="evenodd" d="M16.5 4.478v.227a48.816 48.816 0 0 1 3.878.512.75.75 0 1 1-.256 1.478l-.209-.035-1.005 13.07a3 3 0 0 1-2.991 2.77H8.084a3 3 0 0 1-2.991-2.77L4.087 6.66l-.209.035a.75.75 0 0 1-.256-1.478A48.567 48.567 0 0 1 7.5 4.705v-.227c0-1.564 1.213-2.9 2.816-2.951a52.662 52.662 0 0 1 3.369 0c1.603.051 2.815 1.387 2.815 2.951Zm-6.136-1.452a51.196 51.196 0 0 1 3.273 0C14.39 3.05 15 3.684 15 4.478v.113a49.488 49.488 0 0 0-6 0v-.113c0-.794.609-1.428 1.364-1.452Zm-.355 5.945a.75.75 0 1 0-1.5.058l.347 9a.75.75 0 1 0 1.499-.058l-.346-9Zm5.48 0a.75.75 0 1 0-1.499-.058l-.347 9a.75.75 0 0 0 1.5.058l.346-9Z" clipRule="evenodd" />
-                      </svg>
-                    </button>
-                  </div>
+                  {((morador as any).acesso !== 'Desenvolvedor' || user?.acesso === 'Desenvolvedor') && (
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleEditMorador(morador)}
+                        className="p-1.5 text-amber-500 bg-amber-50 dark:bg-amber-500/10 hover:bg-amber-500/20 rounded-lg transition-colors"
+                        title="Editar"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M21.731 2.269a2.625 2.625 0 0 0-3.712 0l-1.157 1.157 3.712 3.712 1.157-1.157a2.625 2.625 0 0 0 0-3.712ZM19.513 8.199l-3.712-3.712-8.4 8.4a5.25 5.25 0 0 0-1.32 2.214l-.8 2.685a.75.75 0 0 0 .933.933l2.685-.8a5.25 5.25 0 0 0 2.214-1.32l8.4-8.4Z" />
+                          <path d="M5.25 5.25a3 3 0 0 0-3 3v10.5a3 3 0 0 0 3 3h10.5a3 3 0 0 0 3-3V13.5a.75.75 0 0 0-1.5 0v5.25a1.5 1.5 0 0 1-1.5 1.5H5.25a1.5 1.5 0 0 1-1.5-1.5V8.25a1.5 1.5 0 0 1 1.5-1.5h5.25a.75.75 0 0 0 0-1.5H5.25Z" />
+                        </svg>
+                      </button>
+                      <button
+                        onClick={() => handleDelete(morador)}
+                        className="p-1.5 text-red-500 bg-red-50 dark:bg-red-500/10 hover:bg-red-500/20 rounded-lg transition-colors"
+                        title="Excluir"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                          <path fillRule="evenodd" d="M16.5 4.478v.227a48.816 48.816 0 0 1 3.878.512.75.75 0 1 1-.256 1.478l-.209-.035-1.005 13.07a3 3 0 0 1-2.991 2.77H8.084a3 3 0 0 1-2.991-2.77L4.087 6.66l-.209.035a.75.75 0 0 1-.256-1.478A48.567 48.567 0 0 1 7.5 4.705v-.227c0-1.564 1.213-2.9 2.816-2.951a52.662 52.662 0 0 1 3.369 0c1.603.051 2.815 1.387 2.815 2.951Zm-6.136-1.452a51.196 51.196 0 0 1 3.273 0C14.39 3.05 15 3.684 15 4.478v.113a49.488 49.488 0 0 0-6 0v-.113c0-.794.609-1.428 1.364-1.452Zm-.355 5.945a.75.75 0 1 0-1.5.058l.347 9a.75.75 0 1 0 1.499-.058l-.346-9Zm5.48 0a.75.75 0 1 0-1.499-.058l-.347 9a.75.75 0 0 0 1.5.058l.346-9Z" clipRule="evenodd" />
+                        </svg>
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             ))
@@ -747,7 +788,7 @@ export function GerenciarMoradoresTab() {
                   <button
                     onClick={() => {
                       setEditingMorador(null)
-                      setEditFormData({ cpf: '', nome: '', apartamento: '', torre: '' })
+                      setEditFormData({ cpf: '', nome: '', apartamento: '', torre: '', acesso: 'Morador', email: '' })
                       setMessage(null)
                     }}
                     className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700/50 text-slate-400 transition-colors"
@@ -759,6 +800,32 @@ export function GerenciarMoradoresTab() {
                 </div>
 
                 <form onSubmit={handleUpdateMorador} className="space-y-4">
+                  {/* Acesso Toggle na Edição */}
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">
+                      Tipo de Acesso <span className="text-red-500">*</span>
+                    </label>
+                    <div className="flex bg-slate-50 dark:bg-slate-900/50 p-1 rounded-xl h-10 border border-slate-200 dark:border-slate-700/50">
+                      {[
+                        { id: 'Morador', label: 'Comum' },
+                        { id: 'Administrador', label: 'Admin' },
+                        { id: 'Engenharia', label: 'Engenharia' },
+                        ...(user?.acesso === 'Desenvolvedor' ? [{ id: 'Desenvolvedor', label: 'Dev' }] : [])
+                      ].map((role) => (
+                        <button
+                          key={role.id}
+                          type="button"
+                          onClick={() => setEditFormData({ ...editFormData, acesso: role.id as any })}
+                          className={`flex-1 flex items-center justify-center rounded-lg text-[11px] font-bold transition-all ${editFormData.acesso === role.id
+                            ? 'bg-white dark:bg-slate-800 text-cyan-600 dark:text-cyan-400 shadow-sm ring-1 ring-slate-200 dark:ring-slate-700'
+                            : 'text-slate-400 hover:text-slate-500 dark:hover:text-slate-300'
+                            }`}
+                        >
+                          {role.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">
                       CPF <span className="text-red-500">*</span>
@@ -814,7 +881,7 @@ export function GerenciarMoradoresTab() {
                         onChange={(e) => setEditFormData({ ...editFormData, apartamento: e.target.value })}
                         className="w-full bg-slate-100 dark:bg-slate-900 border-none rounded-xl h-10 text-xs px-4 focus:ring-2 focus:ring-cyan-500/30 transition-all text-slate-500 dark:text-slate-400 cursor-not-allowed"
                         placeholder="34"
-                        required
+                        required={editFormData.acesso === 'Morador'}
                         disabled={true}
                         readOnly
                       />
@@ -830,9 +897,31 @@ export function GerenciarMoradoresTab() {
                         onChange={(e) => setEditFormData({ ...editFormData, torre: e.target.value })}
                         className="w-full bg-slate-100 dark:bg-slate-900 border-none rounded-xl h-10 text-xs px-4 focus:ring-2 focus:ring-cyan-500/30 transition-all text-slate-500 dark:text-slate-400 cursor-not-allowed"
                         placeholder="2"
-                        required
+                        required={editFormData.acesso === 'Morador'}
                         disabled={true}
                         readOnly
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">
+                      Email
+                    </label>
+                    <div className="relative group">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400 group-focus-within:text-cyan-500 transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M1.5 8.67v8.58a3 3 0 0 0 3 3h15a3 3 0 0 0 3-3V8.67l-8.928 5.493a3 3 0 0 1-3.144 0L1.5 8.67Z" />
+                          <path d="M22.5 6.908V6.75a3 3 0 0 0-3-3h-15a3 3 0 0 0-3 3v.158l9.714 5.978a1.5 1.5 0 0 0 1.572 0L22.5 6.908Z" />
+                        </svg>
+                      </div>
+                      <input
+                        type="email"
+                        value={editFormData.email}
+                        onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })}
+                        className="w-full bg-slate-50 dark:bg-slate-900 border-none rounded-xl h-10 text-xs pl-10 focus:ring-2 focus:ring-cyan-500/30 transition-all text-slate-700 dark:text-slate-200"
+                        placeholder="morador@email.com"
+                        disabled={saving}
                       />
                     </div>
                   </div>
@@ -848,7 +937,7 @@ export function GerenciarMoradoresTab() {
                       type="button"
                       onClick={() => {
                         setEditingMorador(null)
-                        setEditFormData({ cpf: '', nome: '', apartamento: '', torre: '' })
+                        setEditFormData({ cpf: '', nome: '', apartamento: '', torre: '', acesso: 'Morador', email: '' })
                         setMessage(null)
                       }}
                       disabled={saving}
@@ -1032,6 +1121,39 @@ export function GerenciarMoradoresTab() {
               </div>
 
               <form onSubmit={handleCreateMorador} className="space-y-4">
+                {/* Acesso Toggle */}
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">
+                    Tipo de Acesso <span className="text-red-500">*</span>
+                  </label>
+                  <div className="flex bg-slate-50 dark:bg-slate-900/50 p-1 rounded-xl h-10 border border-slate-200 dark:border-slate-700/50">
+                    {[
+                      { id: 'Morador', label: 'Comum' },
+                      { id: 'Administrador', label: 'Admin' },
+                      { id: 'Engenharia', label: 'Engenharia' },
+                      ...(user?.acesso === 'Desenvolvedor' ? [{ id: 'Desenvolvedor', label: 'Dev' }] : [])
+                    ].map((role) => (
+                      <button
+                        key={role.id}
+                        type="button"
+                        onClick={() => {
+                          const isTechnical = role.id !== 'Morador'
+                          setFormData({
+                            ...formData,
+                            acesso: role.id as any,
+                            isMaster: isTechnical
+                          })
+                        }}
+                        className={`flex-1 flex items-center justify-center rounded-lg text-[11px] font-bold transition-all ${formData.acesso === role.id
+                          ? 'bg-white dark:bg-slate-800 text-cyan-600 dark:text-cyan-400 shadow-sm ring-1 ring-slate-200 dark:ring-slate-700'
+                          : 'text-slate-400 hover:text-slate-500 dark:hover:text-slate-300'
+                          }`}
+                      >
+                        {role.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* CPF */}
                   <div className="space-y-1.5">
@@ -1084,7 +1206,7 @@ export function GerenciarMoradoresTab() {
                   {/* Apartamento */}
                   <div className="md:col-span-2 space-y-1.5">
                     <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">
-                      Apartamento <span className="text-red-500">*</span>
+                      Apartamento {formData.acesso === 'Morador' && <span className="text-red-500">*</span>}
                     </label>
                     <input
                       type="text"
@@ -1092,7 +1214,7 @@ export function GerenciarMoradoresTab() {
                       onChange={(e) => setFormData({ ...formData, apartamento: e.target.value })}
                       className="w-full bg-slate-50 dark:bg-slate-900 border-none rounded-xl h-10 text-xs px-4 focus:ring-2 focus:ring-cyan-500/30 transition-all text-slate-700 dark:text-slate-200"
                       placeholder="Ex: 34"
-                      required
+                      required={formData.acesso === 'Morador'}
                       disabled={saving}
                     />
                   </div>
@@ -1100,7 +1222,7 @@ export function GerenciarMoradoresTab() {
                   {/* Torre */}
                   <div className="md:col-span-2 space-y-1.5">
                     <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">
-                      Torre <span className="text-red-500">*</span>
+                      Torre {formData.acesso === 'Morador' && <span className="text-red-500">*</span>}
                     </label>
                     <input
                       type="text"
@@ -1108,7 +1230,7 @@ export function GerenciarMoradoresTab() {
                       onChange={(e) => setFormData({ ...formData, torre: e.target.value })}
                       className="w-full bg-slate-50 dark:bg-slate-900 border-none rounded-xl h-10 text-xs px-4 focus:ring-2 focus:ring-cyan-500/30 transition-all text-slate-700 dark:text-slate-200"
                       placeholder="Ex: 2"
-                      required
+                      required={formData.acesso === 'Morador'}
                       disabled={saving}
                     />
                   </div>
@@ -1137,73 +1259,6 @@ export function GerenciarMoradoresTab() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Acesso Toggle */}
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">
-                      Tipo de Acesso <span className="text-red-500">*</span>
-                    </label>
-                    <div className="flex bg-slate-50 dark:bg-slate-900/50 p-1 rounded-xl h-10 border border-slate-200 dark:border-slate-700/50">
-                      {[
-                        { id: 'Morador', label: 'Comum' },
-                        { id: 'Administrador', label: 'Admin' }
-                      ].map((role) => (
-                        <button
-                          key={role.id}
-                          type="button"
-                          onClick={() => {
-                            const isNewAdmin = role.id === 'Administrador'
-                            setFormData({
-                              ...formData,
-                              acesso: role.id as 'Administrador' | 'Morador',
-                              isMaster: isNewAdmin ? formData.isMaster : false
-                            })
-                          }}
-                          className={`flex-1 flex items-center justify-center rounded-lg text-[11px] font-bold transition-all ${formData.acesso === role.id
-                            ? 'bg-white dark:bg-slate-800 text-cyan-600 dark:text-cyan-400 shadow-sm ring-1 ring-slate-200 dark:ring-slate-700'
-                            : 'text-slate-400 hover:text-slate-500 dark:hover:text-slate-300'
-                            }`}
-                        >
-                          {role.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Usuário Mestre Toggle */}
-                  <div className={`space-y-1.5 transition-all duration-300 ${formData.acesso === 'Administrador' ? 'opacity-100' : 'opacity-40 grayscale pointer-events-none'}`}>
-                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">
-                      Acesso Mestre
-                    </label>
-                    <div className="flex bg-slate-50 dark:bg-slate-900/50 p-1 rounded-xl h-10 border border-slate-200 dark:border-slate-700/50">
-                      {[
-                        { id: 'no', label: 'Não', value: false },
-                        { id: 'yes', label: 'Sim', value: true }
-                      ].map((opt) => (
-                        <button
-                          key={opt.id}
-                          type="button"
-                          onClick={() => setFormData({ ...formData, isMaster: opt.value })}
-                          className={`flex-1 flex items-center justify-center rounded-lg text-[11px] font-bold transition-all ${formData.isMaster === opt.value
-                            ? 'bg-white dark:bg-slate-800 text-cyan-600 dark:text-cyan-400 shadow-sm ring-1 ring-slate-200 dark:ring-slate-700'
-                            : 'text-slate-400 hover:text-slate-500 dark:hover:text-slate-300'
-                            }`}
-                        >
-                          {opt.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                {formData.acesso !== 'Administrador' && formData.isMaster && (
-                  <div className="flex gap-2 p-2 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[10px] font-medium animate-pulse">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
-                      <path fillRule="evenodd" d="M9.401 3.003c.356-.63 1.242-.63 1.598 0l7.52 13.31a.999.999 0 0 1-.874 1.492H2.355a.999.999 0 0 1-.874-1.491l7.52-13.311ZM10 13a1 1 0 1 1 2 0v-3a1 1 0 1 1-2 0v3Zm2 3a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" clipRule="evenodd" />
-                    </svg>
-                    Apenas Administradores podem ser marcados como Mestre
-                  </div>
-                )}
 
                 {/* Info Box */}
                 <div className="p-3 bg-cyan-500/5 dark:bg-cyan-500/10 border border-cyan-500/20 rounded-xl flex items-center gap-3">
@@ -1214,9 +1269,30 @@ export function GerenciarMoradoresTab() {
                     <span className="text-[10px] font-bold uppercase tracking-wide">Senha Provisória</span>
                   </div>
                   <p className="text-[10px] text-slate-500 dark:text-slate-400">
-                    Gerada como: <code className="font-mono bg-cyan-500/20 px-1 py-0.5 rounded text-cyan-700 dark:text-cyan-300 font-bold">{formData.apartamento || 'AP'}{formData.torre || 'Torre'}</code>
+                    Gerada como: <code className="font-mono bg-cyan-500/20 px-1 py-0.5 rounded text-cyan-700 dark:text-cyan-300 font-bold">
+                      {formData.acesso === 'Morador'
+                        ? `${formData.apartamento || 'AP'}${formData.torre || 'Torre'}`
+                        : 'Senha123456'
+                      }
+                    </code>
                   </p>
                 </div>
+
+                {message && (
+                  <div className={`p-3 rounded-xl flex items-start gap-3 mb-4 ${message.type === 'success'
+                    ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20'
+                    : 'bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-500/20'
+                    }`}>
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mt-0.5 shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                      {message.type === 'success' ? (
+                        <path fillRule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12Zm13.36-1.814a.75.75 0 1 0-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 0 0-1.06 1.06l2.25 2.25a.75.75 0 0 0 1.14-.094l3.75-5.25Z" clipRule="evenodd" />
+                      ) : (
+                        <path fillRule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25Zm-1.72 6.97a.75.75 0 1 0-1.06 1.06L10.94 12l-1.72 1.72a.75.75 0 1 0 1.06 1.06L12 13.06l1.72 1.72a.75.75 0 1 0 1.06-1.06L13.06 12l1.72-1.72a.75.75 0 1 0-1.06-1.06L12 10.94l-1.72-1.72Z" clipRule="evenodd" />
+                      )}
+                    </svg>
+                    <p className="text-xs font-medium">{message.text}</p>
+                  </div>
+                )}
 
                 <div className="flex gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
                   <button
@@ -1247,6 +1323,36 @@ export function GerenciarMoradoresTab() {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Advertência (Duplicidade) */}
+      {showDuplicateWarning && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center z-[200] p-4 animate-in fade-in duration-300">
+          <div className="bg-white dark:bg-slate-800 rounded-[2rem] shadow-2xl max-w-sm w-full border border-slate-200 dark:border-slate-700/50 p-8 text-center overflow-hidden relative">
+            {/* Background Decor */}
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-32 bg-amber-500/10 blur-3xl rounded-full -mt-16"></div>
+
+            <div className="relative">
+              <div className="w-20 h-20 rounded-3xl bg-amber-50 dark:bg-amber-500/10 flex items-center justify-center text-amber-500 mx-auto mb-6 shadow-sm border border-amber-100 dark:border-amber-500/20">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10" viewBox="0 0 24 24" fill="currentColor">
+                  <path fillRule="evenodd" d="M9.401 3.003c1.155-2 4.043-2 5.197 0l7.355 12.748c1.154 2-.29 4.5-2.599 4.5H4.645c-2.309 0-3.752-2.5-2.598-4.5L9.401 3.003ZM12 8.25a.75.75 0 0 1 .75.75v3.75a.75.75 0 0 1-1.5 0V9a.75.75 0 0 1 .75-.75Zm0 8.25a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Z" clipRule="evenodd" />
+                </svg>
+              </div>
+
+              <h3 className="text-xl font-black text-slate-800 dark:text-white mb-3 tracking-tight">Registro já existe!</h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mb-8 leading-relaxed px-2 font-medium">
+                {showDuplicateWarning}
+              </p>
+
+              <button
+                onClick={() => setShowDuplicateWarning(null)}
+                className="w-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 h-12 rounded-2xl font-bold text-sm shadow-xl shadow-slate-900/10 dark:shadow-white/5 hover:scale-[1.02] active:scale-[0.98] transition-all"
+              >
+                Entendi
+              </button>
             </div>
           </div>
         </div>

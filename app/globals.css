@@ -41,4 +41,13 @@ body {
   .dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
     background-color: rgba(71, 85, 105, 0.8);
   }
+
+  .hidden-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .hidden-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
 }

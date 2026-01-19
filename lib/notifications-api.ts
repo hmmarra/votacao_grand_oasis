@@ -258,19 +258,19 @@ export const subscribeToUnreadCount = (
 // Funções auxiliares para criar notificações específicas
 
 // Notificação de reforma aprovada
-export const notifyReformaApproved = async (userId: string, reformaId: string, apartamento: string) => {
+export const notifyReformaApproved = async (userId: string, reformaId: string, apartamento: string, artRrt: string) => {
     await createNotification({
         userId,
         type: 'reforma',
         title: 'Reforma Aprovada',
         message: `Sua solicitação de reforma para o apartamento ${apartamento} foi aprovada.`,
-        link: '/reformas',
+        link: `/reformas?art=${encodeURIComponent(artRrt)}`,
         metadata: { reformaId }
     })
 }
 
 // Notificação de reforma reprovada
-export const notifyReformaRejected = async (userId: string, reformaId: string, apartamento: string, motivo?: string) => {
+export const notifyReformaRejected = async (userId: string, reformaId: string, apartamento: string, artRrt: string, motivo?: string) => {
     await createNotification({
         userId,
         type: 'reforma',
@@ -278,31 +278,31 @@ export const notifyReformaRejected = async (userId: string, reformaId: string, a
         message: motivo
             ? `Sua solicitação de reforma para o apartamento ${apartamento} foi reprovada. Motivo: ${motivo}`
             : `Sua solicitação de reforma para o apartamento ${apartamento} foi reprovada.`,
-        link: '/reformas',
+        link: `/reformas?art=${encodeURIComponent(artRrt)}`,
         metadata: { reformaId }
     })
 }
 
 // Notificação de nova mensagem na reforma
-export const notifyNewReformaMessage = async (userId: string, reformaId: string, senderName: string, apartamento: string) => {
+export const notifyNewReformaMessage = async (userId: string, reformaId: string, senderName: string, apartamento: string, artRrt: string) => {
     await createNotification({
         userId,
         type: 'mensagem',
         title: 'Nova Mensagem',
         message: `${senderName} comentou na reforma do apartamento ${apartamento}.`,
-        link: '/reformas',
+        link: `/reformas?art=${encodeURIComponent(artRrt)}`,
         metadata: { reformaId }
     })
 }
 
 // Notificação de vistoria agendada
-export const notifyVistoriaScheduled = async (userId: string, reformaId: string, apartamento: string, data: string) => {
+export const notifyVistoriaScheduled = async (userId: string, reformaId: string, apartamento: string, artRrt: string, data: string) => {
     await createNotification({
         userId,
         type: 'reforma',
         title: 'Vistoria Agendada',
         message: `Vistoria agendada para o apartamento ${apartamento} em ${new Date(data).toLocaleDateString('pt-BR')}.`,
-        link: '/reformas',
+        link: `/reformas?art=${encodeURIComponent(artRrt)}`,
         metadata: { reformaId }
     })
 }
@@ -328,7 +328,7 @@ export const notifySystem = async (userIds: string[], title: string, message: st
 }
 
 // Notificação para administradores sobre nova mensagem de morador
-export const notifyAdminsNewMessage = async (reformaId: string, senderName: string, apartamento: string) => {
+export const notifyAdminsNewMessage = async (reformaId: string, senderName: string, apartamento: string, artRrt: string) => {
     try {
         // Buscar todos os usuários administradores (coleção: administradores, campo: isMaster)
         const adminRef = collection(db, 'administradores')
@@ -340,11 +340,12 @@ export const notifyAdminsNewMessage = async (reformaId: string, senderName: stri
         console.log('Administradores encontrados:', adminCpfs.length, adminCpfs)
 
         if (adminCpfs.length > 0) {
+            const artLink = `/reformas?art=${encodeURIComponent(artRrt)}`
             await createNotificationForUsers(adminCpfs, {
                 type: 'mensagem',
                 title: 'Nova Mensagem de Morador',
-                message: `${senderName} enviou uma mensagem sobre a reforma do apartamento ${apartamento}.`,
-                link: '/reformas',
+                message: `${senderName} enviou uma mensagem sobre a reforma do apto ${apartamento}.\nClique para abrir.`,
+                link: artLink,
                 metadata: { reformaId }
             })
         } else {
@@ -352,6 +353,33 @@ export const notifyAdminsNewMessage = async (reformaId: string, senderName: stri
         }
     } catch (error) {
         console.error('Erro ao notificar administradores:', error)
+        throw error
+    }
+}
+
+// Notificação para Engenharia sobre solicitação de vistoria
+export const notifyEngenhariaVistoriaRequested = async (reformaId: string, apartamento: string, artRrt: string) => {
+    try {
+        const usersRef = collection(db, 'administradores')
+        // Buscar usuários com acesso 'Engenharia' ou 'Desenvolvedor' (por segurança, dev também vê)
+        // Mas a requisição foi especificamente "notificar o Engenheiro"
+        const q = query(usersRef, where('acesso', '==', 'Engenharia'))
+        const snapshot = await getDocs(q)
+
+        const engenhariaCpfs = snapshot.docs.map(doc => doc.data().cpf).filter(Boolean)
+
+        if (engenhariaCpfs.length > 0) {
+            const artLink = `/reformas?art=${encodeURIComponent(artRrt)}`
+            await createNotificationForUsers(engenhariaCpfs, {
+                type: 'reforma',
+                title: 'Nova Solicitação de Vistoria',
+                message: `Foi solicitada uma vistoria para a reforma do apartamento ${apartamento}.`,
+                link: artLink,
+                metadata: { reformaId }
+            })
+        }
+    } catch (error) {
+        console.error('Erro ao notificar Engenharia:', error)
         throw error
     }
 }

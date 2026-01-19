@@ -10,7 +10,7 @@ export default function SobrePage() {
             <Sidebar />
 
             <div className="flex-1 flex flex-col min-w-0">
-                <div className="flex-1 w-full px-4 py-10">
+                <div className="flex-1 w-full px-4 pt-24 lg:pt-10 pb-10">
                     <div className="w-full max-w-[1600px] mx-auto flex flex-col justify-center">
 
                         {/* Grid Container */}

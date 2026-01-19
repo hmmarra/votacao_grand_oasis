@@ -6,7 +6,7 @@ import { useAuth } from '@/lib/auth'
 
 interface ProtectedRouteProps {
   children: React.ReactNode
-  requiredAccess?: 'Administrador' | 'Morador'
+  requiredAccess?: 'Administrador' | 'Morador' | 'Engenharia' | 'Desenvolvedor'
 }
 
 export function ProtectedRoute({ children, requiredAccess }: ProtectedRouteProps) {
@@ -25,7 +25,9 @@ export function ProtectedRoute({ children, requiredAccess }: ProtectedRouteProps
         return
       }
 
-      if (requiredAccess === 'Administrador' && user.acesso !== 'Administrador') {
+      if (requiredAccess === 'Administrador' &&
+        user.acesso !== 'Administrador' &&
+        user.acesso !== 'Desenvolvedor') {
         router.push('/pautas')
         return
       }
@@ -47,7 +49,9 @@ export function ProtectedRoute({ children, requiredAccess }: ProtectedRouteProps
     return null
   }
 
-  if (requiredAccess === 'Administrador' && user.acesso !== 'Administrador') {
+  if (requiredAccess === 'Administrador' &&
+    user.acesso !== 'Administrador' &&
+    user.acesso !== 'Desenvolvedor') {
     return null
   }
 

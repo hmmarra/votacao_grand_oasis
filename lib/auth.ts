@@ -8,7 +8,7 @@ export interface User {
   id: string
   nome: string
   cpf: string
-  acesso: 'Administrador' | 'Morador'
+  acesso: 'Administrador' | 'Morador' | 'Engenharia' | 'Desenvolvedor'
   apartamento: string
   torre: string
   email?: string
@@ -45,23 +45,24 @@ export async function authenticateUser(emailOrCpf: string, senha: string): Promi
       return null
     }
 
-    const admin = snapshot.docs[0]
-    const data = admin.data()
+    // Verificar entre os documentos encontrados qual coincide com a senha fornecida
+    // Isso permite que um mesmo CPF tenha múltiplos perfis (ex: Morador e Engenheiro) com senhas diferentes
+    for (const adminDoc of snapshot.docs) {
+      const data = adminDoc.data()
+      const expectedPassword = data.senha || `${data.apartamento}${data.torre}`
 
-    // Verificar senha (formato: apartamento + torre, ou senha customizada)
-    const expectedPassword = data.senha || `${data.apartamento}${data.torre}`
-
-    if (senha === expectedPassword || senha === data.senha) {
-      return {
-        id: admin.id,
-        nome: data.nome,
-        cpf: data.cpf,
-        acesso: data.acesso || 'Morador',
-        apartamento: data.apartamento,
-        torre: data.torre,
-        email: data.email,
-        data_cadastro: data.data_cadastro,
-        isMaster: data.isMaster || false
+      if (senha === expectedPassword || (data.senha && senha === data.senha)) {
+        return {
+          id: adminDoc.id,
+          nome: data.nome,
+          cpf: data.cpf,
+          acesso: data.acesso || 'Morador',
+          apartamento: data.apartamento,
+          torre: data.torre,
+          email: data.email,
+          data_cadastro: data.data_cadastro,
+          isMaster: data.isMaster || false
+        }
       }
     }
 
