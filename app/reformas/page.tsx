@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useMemo } from 'react'
+import { useState, useEffect, useRef, useMemo, Suspense } from 'react'
 import { useSearchParams, useRouter, usePathname } from 'next/navigation'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import { Sidebar } from '@/components/Sidebar'
@@ -55,7 +55,7 @@ function NotificationModal({ open, type, message, onClose }: { open: boolean, ty
     )
 }
 
-export default function ReformasPage() {
+function ReformasContent() {
     const { user } = useAuth()
     const [reformas, setReformas] = useState<Reforma[]>([])
     const [moradores, setMoradores] = useState<Morador[]>([])
@@ -745,6 +745,14 @@ export default function ReformasPage() {
                 )
             }
         </ProtectedRoute >
+    )
+}
+
+export default function ReformasPage() {
+    return (
+        <Suspense fallback={<div className="flex h-screen items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-500"></div></div>}>
+            <ReformasContent />
+        </Suspense>
     )
 }
 
